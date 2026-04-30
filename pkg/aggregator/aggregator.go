@@ -329,16 +329,15 @@ groups[key] = append(groups[key], row)
 
 // Calculate aggregations for each group
 result = make([]map[string]interface{}, 0)
-for key, rows := range groups {
-rowResult := make(map[string]interface{})
-
-// Add group by fields
-if len(req.GroupBy) > 0 {
-keyParts := strings.Split(key, "|")
-for i, field := range req.GroupBy {
-rowResult[field] = getNestedValue(rows[0], field)
-}
-}
+for _, rows := range groups {
+	rowResult := make(map[string]interface{})
+	
+	// Add group by fields
+	if len(req.GroupBy) > 0 {
+		for _, field := range req.GroupBy {
+			rowResult[field] = getNestedValue(rows[0], field)
+		}
+	}
 
 // Calculate standard aggregations
 for _, agg := range req.Aggregations {
