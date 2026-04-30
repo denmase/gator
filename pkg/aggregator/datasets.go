@@ -26,13 +26,27 @@ func GetDataset(name string) []map[string]interface{} {
 	return data
 }
 
-// GetAvailableDatasets returns list of available dataset names
-func GetAvailableDatasets() []string {
-	names := make([]string, 0, len(datasets))
+// DatasetInfo contains information about a dataset
+type DatasetInfo struct {
+	Name  string `json:"name"`
+	Count int    `json:"count"`
+}
+
+// GetAvailableDatasets returns list of available datasets with info
+func GetAvailableDatasets() []DatasetInfo {
+	infos := make([]DatasetInfo, 0, len(datasets))
 	for name := range datasets {
-		names = append(names, name)
+		data := GetDataset(name)
+		count := 0
+		if data != nil {
+			count = len(data)
+		}
+		infos = append(infos, DatasetInfo{
+			Name:  name,
+			Count: count,
+		})
 	}
-	return names
+	return infos
 }
 
 // employeesJSON is the mock employee data with nested credit accounts
