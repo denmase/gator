@@ -1,0 +1,3 @@
+Visual Aggregator Server starting on http://localhost:8080
+Serving static files from: ./static
+Available datasets: [{employees 10}]
