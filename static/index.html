@@ -351,6 +351,7 @@
                         </select>
                         <button class="btn btn-secondary" onclick="document.getElementById('fileUpload').click()">Upload JSON</button>
                         <input type="file" id="fileUpload" accept=".json" style="display:none" onchange="uploadFile()">
+                        <button class="btn btn-secondary" id="viewRawBtn" onclick="viewRawJson()" style="display:none;">👁️ View Raw JSON</button>
                     </div>
                 </div>
 
@@ -508,12 +509,18 @@
         // Load schema for selected dataset
         async function loadSchema() {
             const dataset = document.getElementById('dataset').value;
-            if (!dataset) return;
+            if (!dataset) {
+                document.getElementById('viewRawBtn').style.display = 'none';
+                return;
+            }
 
             try {
                 const response = await fetch(`/api/schema?dataset=${encodeURIComponent(dataset)}`);
                 schema = await response.json();
                 updateFieldDropdowns();
+                
+                // Show View Raw JSON button
+                document.getElementById('viewRawBtn').style.display = 'inline-block';
             } catch (error) {
                 console.error('Error loading schema:', error);
             }
@@ -836,6 +843,103 @@
             }
             
             fileInput.value = '';
+        }
+
+        // View Raw JSON
+        async function viewRawJson() {
+            const dataset = document.getElementById('dataset').value;
+            if (!dataset) return;
+
+            try {
+                const response = await fetch(`/api/raw-data?dataset=${encodeURIComponent(dataset)}`);
+                const data = await response.json();
+                
+                // Create modal
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.7);
+                    z-index: 1000;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                `;
+                
+                const modalContent = document.createElement('div');
+                modalContent.style.cssText = `
+                    background: white;
+                    border-radius: 12px;
+                    padding: 25px;
+                    max-width: 90%;
+                    max-height: 90%;
+                    width: 1200px;
+                    display: flex;
+                    flex-direction: column;
+                `;
+                
+                const header = document.createElement('div');
+                header.style.cssText = `
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 15px;
+                `;
+                
+                const title = document.createElement('h3');
+                title.textContent = `Raw JSON Data - ${dataset}`;
+                title.style.cssText = `margin: 0; color: #667eea;`;
+                
+                const closeBtn = document.createElement('button');
+                closeBtn.textContent = '✕';
+                closeBtn.style.cssText = `
+                    background: #ff4757;
+                    color: white;
+                    border: none;
+                    width: 35px;
+                    height: 35px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 18px;
+                `;
+                closeBtn.onclick = () => document.body.removeChild(modal);
+                
+                header.appendChild(title);
+                header.appendChild(closeBtn);
+                
+                const jsonContainer = document.createElement('pre');
+                jsonContainer.style.cssText = `
+                    background: #1e1e1e;
+                    color: #d4d4d4;
+                    padding: 15px;
+                    border-radius: 8px;
+                    overflow: auto;
+                    flex: 1;
+                    font-family: 'Consolas', 'Monaco', monospace;
+                    font-size: 13px;
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                `;
+                jsonContainer.textContent = JSON.stringify(data, null, 2);
+                
+                modalContent.appendChild(header);
+                modalContent.appendChild(jsonContainer);
+                modal.appendChild(modalContent);
+                document.body.appendChild(modal);
+                
+                // Close on outside click
+                modal.onclick = (e) => {
+                    if (e.target === modal) {
+                        document.body.removeChild(modal);
+                    }
+                };
+            } catch (error) {
+                console.error('Error loading raw data:', error);
+                alert('Error loading raw data: ' + error.message);
+            }
         }
 
         // Update DSL preview
