@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Aggregator - SQL-like JSON Aggregation</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .panel h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        select, input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-danger {
+            background: #ff4757;
+        }
+
+        .btn-danger:hover {
+            background: #ff3344;
+        }
+
+        .filter-row, .group-row, .agg-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 2fr auto;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        .group-row {
+            grid-template-columns: 2fr auto;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            margin: 20px 0 10px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .add-btn {
+            background: #2ed573;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+
+        .add-btn:hover {
+            background: #26c96b;
+        }
+
+        .remove-btn {
+            background: #ff4757;
+            color: white;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .dsl-preview {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .result-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        .result-table th, .result-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .result-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .result-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 15px;
+            transition: border-color 0.3s;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+        }
+
+        .dataset-select {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .success-message {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .examples-section {
+            margin-top: 30px;
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .example-query {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .example-query:hover {
+            background: #e8eaf6;
+        }
+
+        .example-query h4 {
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .example-query code {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .special-agg-section {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .special-agg-section h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔍 Visual Aggregator</h1>
+            <p>SQL-like aggregation for JSON data with nested array support</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Left Panel: Query Builder -->
+            <div class="panel">
+                <h2>Query Builder</h2>
+
+                <!-- Dataset Selection -->
+                <div class="form-group">
+                    <label for="dataset">Dataset</label>
+                    <div class="dataset-select">
+                        <select id="dataset" onchange="loadSchema()">
+                            <option value="">Select dataset...</option>
+                        </select>
+                        <button class="btn btn-secondary" onclick="document.getElementById('fileUpload').click()">Upload JSON</button>
+                        <input type="file" id="fileUpload" accept=".json" style="display:none" onchange="uploadFile()">
+                    </div>
+                </div>
+
+                <!-- WHERE Clause -->
+                <div class="section-title">WHERE Clause (Filters)</div>
+                <div id="filters"></div>
+                <button class="add-btn" onclick="addFilter()">+ Add Filter</button>
+
+                <!-- GROUP BY -->
+                <div class="section-title">GROUP BY</div>
+                <div id="groupByFields"></div>
+                <button class="add-btn" onclick="addGroupByField()">+ Add Group By Field</button>
+
+                <!-- Aggregations -->
+                <div class="section-title">Aggregations</div>
+                <div id="aggregations"></div>
+                <button class="add-btn" onclick="addAggregation()">+ Add Aggregation</button>
+
+                <!-- Special Aggregations for Time Series -->
+                <div class="special-agg-section">
+                    <h4>⏱️ Special Time-Series Aggregations</h4>
+                    <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
+                        For analyzing historical data in last_24_delq_hist and last_24_coll_hist arrays
+                    </p>
+                    <div class="form-group">
+                        <label>Last N Months</label>
+                        <input type="number" id="monthsCount" value="6" min="1" max="24" style="width: 100px;">
+                    </div>
+                    <button class="add-btn" onclick="addSpecialAgg('worst_delinquency')">Worst Delinquency</button>
+                    <button class="add-btn" onclick="addSpecialAgg('max_collectability')">Max Collectability</button>
+                    <button class="add-btn" onclick="addSpecialAgg('ever_has_collectability')">Ever Has Bad Collectability</button>
+                </div>
+
+                <!-- Actions -->
+                <div style="margin-top: 25px; display: flex; gap: 10px;">
+                    <button class="btn" onclick="executeQuery()">▶ Execute Query</button>
+                    <button class="btn btn-secondary" onclick="resetForm()">↺ Reset</button>
+                </div>
+            </div>
+
+            <!-- Right Panel: DSL Preview & Results -->
+            <div class="panel">
+                <h2>DSL Preview & Results</h2>
+
+                <div class="section-title">Request DSL (JSON)</div>
+                <div class="dsl-preview" id="dslPreview">{
+  "dataset": "employees",
+  "where": {},
+  "groupBy": [],
+  "aggregations": []
+}</div>
+
+                <div class="section-title" style="margin-top: 20px;">Results</div>
+                <div id="results">
+                    <p style="color: #666; text-align: center; padding: 40px;">
+                        Execute a query to see results
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Example Queries -->
+        <div class="examples-section">
+            <h2 style="color: #667eea; margin-bottom: 20px;">📚 Example Queries</h2>
+            <p style="margin-bottom: 20px; color: #666;">Click on any example to load and execute it:</p>
+
+            <div class="example-query" onclick="loadExample(1)">
+                <h4>1. Rata-rata Outstanding Balance per Departemen</h4>
+                <p>Group by department, hitung rata-rata outstanding balance dari semua kredit.</p>
+                <code>Group By: department | Aggregations: avg(credits.outstanding_balance)</code>
+            </div>
+
+            <div class="example-query" onclick="loadExample(2)">
+                <h4>2. Total Initial Limit Kredit per Kota (Credit Card Only)</h4>
+                <p>Filter untuk product_type = "credit card", group by city, hitung total initial limit dan jumlah kredit.</p>
+                <code>Where: credits.product_type = "credit card" | Group By: city | Aggregations: sum(credits.initial_limit), count(*)</code>
+            </div>
+
+            <div class="example-query" onclick="loadExample(3)">
+                <h4>3. Maximum Delinquency Overall</h4>
+                <p>Tanpa group by, hitung maximum delinquency dari semua kredit.</p>
+                <code>Aggregations: max(credits.delinquency)</code>
+            </div>
+
+            <div class="example-query" onclick="loadExample(4)">
+                <h4>4. Worst Delinquency in Last 6 Months per Department</h4>
+                <p>Menganalisis historis delinquency 6 bulan terakhir.</p>
+                <code>Group By: department | Special: worst_delinquency (last 6 months from credits.last_24_delq_hist)</code>
+            </div>
+
+            <div class="example-query" onclick="loadExample(5)">
+                <h4>5. Max Collectability Code in Last 3 Months</h4>
+                <p>Melihat collectability terburuk dalam 3 bulan terakhir.</p>
+                <code>Special: max_collectability (last 3 months from credits.last_24_coll_hist)</code>
+            </div>
+
+            <div class="example-query" onclick="loadExample(6)">
+                <h4>6. Jumlah Akun Dibuka dalam 3 Bulan Terakhir</h4>
+                <p>Filter kredit yang dibuka dalam 3 bulan terakhir.</p>
+                <code>Where: credits.open_date > (3 months ago) | Aggregations: count(*)</code>
+            </div>
+
+            <div class="example-query" onclick="loadExample(7)">
+                <h4>7. Kredit dengan Collectability Code Buruk (3, 4, atau 5)</h4>
+                <p>Filter untuk mendeteksi kredit bermasalah.</p>
+                <code>Where: credits.collectability_code IN [3,4,5] | Aggregations: count(*), sum(credits.outstanding_balance)</code>
+            </div>
+
+            <div class="example-query" onclick="loadExample(8)">
+                <h4>8. Statistik Kredit per Product Type</h4>
+                <p>Analisis lengkap per jenis produk kredit.</p>
+                <code>Group By: credits.product_type | Aggregations: count(*), avg(credits.outstanding_balance), max(credits.delinquency)</code>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let schema = [];
+        let filters = [];
+        let groupByFields = [];
+        let aggregations = [];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDatasets();
+        });
+
+        // Load available datasets
+        async function loadDatasets() {
+            try {
+                const response = await fetch('/api/datasets');
+                const datasets = await response.json();
+                
+                const select = document.getElementById('dataset');
+                select.innerHTML = '<option value="">Select dataset...</option>';
+                
+                datasets.forEach(ds => {
+                    const option = document.createElement('option');
+                    option.value = ds.name;
+                    option.textContent = `${ds.name} (${ds.count} records)`;
+                    select.appendChild(option);
+                });
+                
+                // Auto-select employees if available
+                if (datasets.some(d => d.name === 'employees')) {
+                    select.value = 'employees';
+                    loadSchema();
+                }
+            } catch (error) {
+                console.error('Error loading datasets:', error);
+            }
+        }
+
+        // Load schema for selected dataset
+        async function loadSchema() {
+            const dataset = document.getElementById('dataset').value;
+            if (!dataset) return;
+
+            try {
+                const response = await fetch(`/api/schema?dataset=${encodeURIComponent(dataset)}`);
+                schema = await response.json();
+                updateFieldDropdowns();
+            } catch (error) {
+                console.error('Error loading schema:', error);
+            }
+        }
+
+        // Update all field dropdowns with schema fields
+        function updateFieldDropdowns() {
+            // Update filter field dropdowns
+            document.querySelectorAll('.filter-field').forEach(select => {
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">Select field...</option>';
+                schema.forEach(field => {
+                    const option = document.createElement('option');
+                    option.value = field.name;
+                    option.textContent = `${field.name} (${field.type})`;
+                    select.appendChild(option);
+                });
+                if (currentValue && schema.some(f => f.name === currentValue)) {
+                    select.value = currentValue;
+                }
+            });
+
+            // Update group by field dropdowns
+            document.querySelectorAll('.groupby-field').forEach(select => {
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">Select field...</option>';
+                schema.forEach(field => {
+                    const option = document.createElement('option');
+                    option.value = field.name;
+                    option.textContent = `${field.name} (${field.type})`;
+                    select.appendChild(option);
+                });
+                if (currentValue && schema.some(f => f.name === currentValue)) {
+                    select.value = currentValue;
+                }
+            });
+
+            // Update aggregation field dropdowns
+            document.querySelectorAll('.agg-field').forEach(select => {
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">Select field...</option>';
+                schema.forEach(field => {
+                    const option = document.createElement('option');
+                    option.value = field.name;
+                    option.textContent = `${field.name} (${field.type})`;
+                    select.appendChild(option);
+                });
+                if (currentValue && schema.some(f => f.name === currentValue)) {
+                    select.value = currentValue;
+                }
+            });
+        }
+
+        // Add a new filter row
+        function addFilter(values = {}) {
+            const container = document.getElementById('filters');
+            const index = filters.length;
+            
+            const div = document.createElement('div');
+            div.className = 'filter-row';
+            div.dataset.index = index;
+            
+            div.innerHTML = `
+                <select class="filter-field" onchange="updateFilter(${index}, 'field', this.value)">
+                    <option value="">Select field...</option>
+                    ${schema.map(f => `<option value="${f.name}" ${values.field === f.name ? 'selected' : ''}>${f.name} (${f.type})</option>`).join('')}
+                </select>
+                <select class="filter-op" onchange="updateFilter(${index}, 'op', this.value)">
+                    <option value="$eq" ${values.op === '$eq' ? 'selected' : ''}>= equals</option>
+                    <option value="$ne" ${values.op === '$ne' ? 'selected' : ''}>≠ not equals</option>
+                    <option value="$gt" ${values.op === '$gt' ? 'selected' : ''}>> greater than</option>
+                    <option value="$gte" ${values.op === '$gte' ? 'selected' : ''}>≥ greater or equal</option>
+                    <option value="$lt" ${values.op === '$lt' ? 'selected' : ''}>< less than</option>
+                    <option value="$lte" ${values.op === '$lte' ? 'selected' : ''}>≤ less or equal</option>
+                    <option value="$in" ${values.op === '$in' ? 'selected' : ''}>IN (array)</option>
+                </select>
+                <input type="text" class="filter-value" placeholder="Value" 
+                       value="${values.value || ''}" 
+                       onchange="updateFilter(${index}, 'value', this.value)">
+                <button class="remove-btn" onclick="removeFilter(${index})">×</button>
+            `;
+            
+            container.appendChild(div);
+            filters.push(values);
+            updateDSL();
+        }
+
+        function updateFilter(index, key, value) {
+            filters[index] = { ...filters[index], [key]: value };
+            updateDSL();
+        }
+
+        function removeFilter(index) {
+            filters.splice(index, 1);
+            renderFilters();
+            updateDSL();
+        }
+
+        function renderFilters() {
+            const container = document.getElementById('filters');
+            container.innerHTML = '';
+            filters.forEach((filter, i) => addFilterRow(i, filter));
+        }
+
+        function addFilterRow(index, values) {
+            const container = document.getElementById('filters');
+            const div = document.createElement('div');
+            div.className = 'filter-row';
+            
+            div.innerHTML = `
+                <select class="filter-field" onchange="updateFilter(${index}, 'field', this.value)">
+                    <option value="">Select field...</option>
+                    ${schema.map(f => `<option value="${f.name}" ${values.field === f.name ? 'selected' : ''}>${f.name} (${f.type})</option>`).join('')}
+                </select>
+                <select class="filter-op" onchange="updateFilter(${index}, 'op', this.value)">
+                    <option value="$eq" ${values.op === '$eq' ? 'selected' : ''}>= equals</option>
+                    <option value="$ne" ${values.op === '$ne' ? 'selected' : ''}>≠ not equals</option>
+                    <option value="$gt" ${values.op === '$gt' ? 'selected' : ''}>> greater than</option>
+                    <option value="$gte" ${values.op === '$gte' ? 'selected' : ''}>≥ greater or equal</option>
+                    <option value="$lt" ${values.op === '$lt' ? 'selected' : ''}>< less than</option>
+                    <option value="$lte" ${values.op === '$lte' ? 'selected' : ''}>≤ less or equal</option>
+                    <option value="$in" ${values.op === '$in' ? 'selected' : ''}>IN (array)</option>
+                </select>
+                <input type="text" class="filter-value" placeholder="Value" 
+                       value="${values.value || ''}" 
+                       onchange="updateFilter(${index}, 'value', this.value)">
+                <button class="remove-btn" onclick="removeFilter(${index})">×</button>
+            `;
+            
+            container.appendChild(div);
+        }
+
+        // Add GROUP BY field
+        function addGroupByField(value = '') {
+            const container = document.getElementById('groupByFields');
+            const index = groupByFields.length;
+            
+            const div = document.createElement('div');
+            div.className = 'group-row';
+            
+            div.innerHTML = `
+                <select class="groupby-field" onchange="updateGroupBy(${index}, this.value)">
+                    <option value="">Select field...</option>
+                    ${schema.map(f => `<option value="${f.name}" ${value === f.name ? 'selected' : ''}>${f.name} (${f.type})</option>`).join('')}
+                </select>
+                <button class="remove-btn" onclick="removeGroupBy(${index})">×</button>
+            `;
+            
+            container.appendChild(div);
+            groupByFields.push(value);
+            updateDSL();
+        }
+
+        function updateGroupBy(index, value) {
+            groupByFields[index] = value;
+            updateDSL();
+        }
+
+        function removeGroupBy(index) {
+            groupByFields.splice(index, 1);
+            renderGroupBy();
+            updateDSL();
+        }
+
+        function renderGroupBy() {
+            const container = document.getElementById('groupByFields');
+            container.innerHTML = '';
+            groupByFields.forEach((field, i) => {
+                const div = document.createElement('div');
+                div.className = 'group-row';
+                div.innerHTML = `
+                    <select class="groupby-field" onchange="updateGroupBy(${i}, this.value)">
+                        <option value="">Select field...</option>
+                        ${schema.map(f => `<option value="${f.name}" ${field === f.name ? 'selected' : ''}>${f.name} (${f.type})</option>`).join('')}
+                    </select>
+                    <button class="remove-btn" onclick="removeGroupBy(${i})">×</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // Add aggregation
+        function addAggregation(values = {}) {
+            const container = document.getElementById('aggregations');
+            const index = aggregations.length;
+            
+            const div = document.createElement('div');
+            div.className = 'agg-row';
+            
+            div.innerHTML = `
+                <select class="agg-field" onchange="updateAggregation(${index}, 'field', this.value)">
+                    <option value="">Select field...</option>
+                    ${schema.map(f => `<option value="${f.name}" ${values.field === f.name ? 'selected' : ''}>${f.name} (${f.type})</option>`).join('')}
+                </select>
+                <select class="agg-op" onchange="updateAggregation(${index}, 'op', this.value)">
+                    <option value="count" ${values.op === 'count' ? 'selected' : ''}>COUNT</option>
+                    <option value="sum" ${values.op === 'sum' ? 'selected' : ''}>SUM</option>
+                    <option value="avg" ${values.op === 'avg' ? 'selected' : ''}>AVG</option>
+                    <option value="min" ${values.op === 'min' ? 'selected' : ''}>MIN</option>
+                    <option value="max" ${values.op === 'max' ? 'selected' : ''}>MAX</option>
+                </select>
+                <input type="text" class="agg-alias" placeholder="Alias (e.g., total_amount)" 
+                       value="${values.alias || ''}" 
+                       onchange="updateAggregation(${index}, 'alias', this.value)">
+                <button class="remove-btn" onclick="removeAggregation(${index})">×</button>
+            `;
+            
+            container.appendChild(div);
+            aggregations.push(values);
+            updateDSL();
+        }
+
+        function updateAggregation(index, key, value) {
+            aggregations[index] = { ...aggregations[index], [key]: value };
+            updateDSL();
+        }
+
+        function removeAggregation(index) {
+            aggregations.splice(index, 1);
+            renderAggregations();
+            updateDSL();
+        }
+
+        function renderAggregations() {
+            const container = document.getElementById('aggregations');
+            container.innerHTML = '';
+            aggregations.forEach((agg, i) => {
+                const div = document.createElement('div');
+                div.className = 'agg-row';
+                div.innerHTML = `
+                    <select class="agg-field" onchange="updateAggregation(${i}, 'field', this.value)">
+                        <option value="">Select field...</option>
+                        ${schema.map(f => `<option value="${f.name}" ${agg.field === f.name ? 'selected' : ''}>${f.name} (${f.type})</option>`).join('')}
+                    </select>
+                    <select class="agg-op" onchange="updateAggregation(${i}, 'op', this.value)">
+                        <option value="count" ${agg.op === 'count' ? 'selected' : ''}>COUNT</option>
+                        <option value="sum" ${agg.op === 'sum' ? 'selected' : ''}>SUM</option>
+                        <option value="avg" ${agg.op === 'avg' ? 'selected' : ''}>AVG</option>
+                        <option value="min" ${agg.op === 'min' ? 'selected' : ''}>MIN</option>
+                        <option value="max" ${agg.op === 'max' ? 'selected' : ''}>MAX</option>
+                    </select>
+                    <input type="text" class="agg-alias" placeholder="Alias" 
+                           value="${agg.alias || ''}" 
+                           onchange="updateAggregation(${i}, 'alias', this.value)">
+                    <button class="remove-btn" onclick="removeAggregation(${i})">×</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // Add special aggregation
+        function addSpecialAgg(type) {
+            const months = document.getElementById('monthsCount').value;
+            let agg;
+            
+            switch(type) {
+                case 'worst_delinquency':
+                    agg = {
+                        field: 'credits.last_24_delq_hist',
+                        op: 'max',
+                        alias: `worst_delq_last_${months}_months`,
+                        special: true,
+                        months: parseInt(months)
+                    };
+                    break;
+                case 'max_collectability':
+                    agg = {
+                        field: 'credits.last_24_coll_hist',
+                        op: 'max',
+                        alias: `max_coll_last_${months}_months`,
+                        special: true,
+                        months: parseInt(months)
+                    };
+                    break;
+                case 'ever_has_collectability':
+                    agg = {
+                        field: 'credits.last_24_coll_hist',
+                        op: 'ever_has',
+                        alias: 'ever_has_bad_coll',
+                        special: true,
+                        months: parseInt(months)
+                    };
+                    break;
+            }
+            
+            aggregations.push(agg);
+            renderAggregations();
+            updateDSL();
+        }
+
+        // Upload file
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileUpload');
+            const file = fileInput.files[0];
+            
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert(`File uploaded successfully! Dataset: ${result.dataset} (${result.count} records)`);
+                    loadDatasets();
+                    document.getElementById('dataset').value = result.dataset;
+                    loadSchema();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                alert('Error uploading file');
+            }
+            
+            fileInput.value = '';
+        }
+
+        // Update DSL preview
+        function updateDSL() {
+            const dataset = document.getElementById('dataset').value;
+            
+            const whereClause = {};
+            filters.forEach(f => {
+                if (f.field && f.op && f.value !== undefined) {
+                    let value = f.value;
+                    // Try to parse numbers
+                    if (!isNaN(value) && value !== '') {
+                        value = parseFloat(value);
+                        if (Number.isInteger(value)) {
+                            value = parseInt(value);
+                        }
+                    }
+                    // Handle IN operator
+                    if (f.op === '$in') {
+                        value = value.split(',').map(v => v.trim());
+                    }
+                    whereClause[f.field] = { [f.op]: value };
+                }
+            });
+            
+            const groupBy = groupByFields.filter(f => f !== '');
+            
+            const aggs = aggregations.filter(a => a.field && a.op).map(a => ({
+                field: a.field,
+                op: a.op,
+                alias: a.alias || `${a.op}_${a.field.replace(/\./g, '_')}`
+            }));
+            
+            const dsl = {
+                dataset: dataset || 'employees',
+                where: whereClause,
+                groupBy: groupBy,
+                aggregations: aggs
+            };
+            
+            document.getElementById('dslPreview').textContent = JSON.stringify(dsl, null, 2);
+            
+            return dsl;
+        }
+
+        // Execute query
+        async function executeQuery() {
+            const dsl = updateDSL();
+            const resultsDiv = document.getElementById('results');
+            
+            if (!dsl.dataset) {
+                resultsDiv.innerHTML = '<div class="error-message">Please select a dataset</div>';
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Executing query...</div>';
+            
+            try {
+                const response = await fetch('/api/aggregate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(dsl)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    displayResults(result);
+                } else {
+                    resultsDiv.innerHTML = `<div class="error-message">Error: ${result.error || 'Unknown error'}</div>`;
+                }
+            } catch (error) {
+                console.error('Error executing query:', error);
+                resultsDiv.innerHTML = '<div class="error-message">Error executing query: ' + error.message + '</div>';
+            }
+        }
+
+        // Display results
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            
+            if (!data || data.length === 0) {
+                resultsDiv.innerHTML = '<p style="color: #666; text-align: center; padding: 40px;">No results found</p>';
+                return;
+            }
+            
+            const columns = Object.keys(data[0]);
+            
+            let html = '<table class="result-table"><thead><tr>';
+            columns.forEach(col => {
+                html += `<th>${col}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+            
+            data.forEach(row => {
+                html += '<tr>';
+                columns.forEach(col => {
+                    let value = row[col];
+                    // Format numbers
+                    if (typeof value === 'number') {
+                        value = Number.isInteger(value) ? value.toLocaleString() : value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    } else if (value === null || value === undefined) {
+                        value = '<em style="color: #999;">null</em>';
+                    }
+                    html += `<td>${value}</td>`;
+                });
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            html += `<div class="success-message">Showing ${data.length} result(s)</div>`;
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        // Reset form
+        function resetForm() {
+            filters = [];
+            groupByFields = [];
+            aggregations = [];
+            document.getElementById('filters').innerHTML = '';
+            document.getElementById('groupByFields').innerHTML = '';
+            document.getElementById('aggregations').innerHTML = '';
+            document.getElementById('results').innerHTML = '<p style="color: #666; text-align: center; padding: 40px;">Execute a query to see results</p>';
+            updateDSL();
+        }
+
+        // Load example queries
+        function loadExample(exampleNum) {
+            resetForm();
+            
+            // Ensure schema is loaded
+            if (schema.length === 0) {
+                document.getElementById('dataset').value = 'employees';
+                loadSchema().then(() => loadExample(exampleNum));
+                return;
+            }
+            
+            switch(exampleNum) {
+                case 1:
+                    // Avg outstanding balance per department
+                    addGroupByField('department');
+                    addAggregation({ field: 'credits.outstanding_balance', op: 'avg', alias: 'avg_outstanding_balance' });
+                    break;
+                    
+                case 2:
+                    // Credit cards by city
+                    addFilter({ field: 'credits.product_type', op: '$eq', value: 'credit card' });
+                    addGroupByField('city');
+                    addAggregation({ field: 'credits.initial_limit', op: 'sum', alias: 'total_initial_limit' });
+                    addAggregation({ field: '*', op: 'count', alias: 'credit_count' });
+                    break;
+                    
+                case 3:
+                    // Max delinquency overall
+                    addAggregation({ field: 'credits.delinquency', op: 'max', alias: 'max_delinquency' });
+                    break;
+                    
+                case 4:
+                    // Worst delinquency last 6 months per department
+                    addGroupByField('department');
+                    addAggregation({ 
+                        field: 'credits.last_24_delq_hist', 
+                        op: 'max', 
+                        alias: 'worst_delq_last_6_months',
+                        special: true,
+                        months: 6
+                    });
+                    break;
+                    
+                case 5:
+                    // Max collectability last 3 months
+                    addAggregation({ 
+                        field: 'credits.last_24_coll_hist', 
+                        op: 'max', 
+                        alias: 'max_coll_last_3_months',
+                        special: true,
+                        months: 3
+                    });
+                    break;
+                    
+                case 6:
+                    // Accounts opened in last 3 months
+                    const threeMonthsAgo = new Date();
+                    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+                    const dateStr = threeMonthsAgo.toISOString().split('T')[0];
+                    addFilter({ field: 'credits.open_date', op: '$gte', value: dateStr });
+                    addAggregation({ field: '*', op: 'count', alias: 'new_accounts_count' });
+                    break;
+                    
+                case 7:
+                    // Bad collectability codes
+                    addFilter({ field: 'credits.collectability_code', op: '$in', value: '3,4,5' });
+                    addAggregation({ field: '*', op: 'count', alias: 'bad_credit_count' });
+                    addAggregation({ field: 'credits.outstanding_balance', op: 'sum', alias: 'total_exposure' });
+                    break;
+                    
+                case 8:
+                    // Stats per product type
+                    addGroupByField('credits.product_type');
+                    addAggregation({ field: '*', op: 'count', alias: 'account_count' });
+                    addAggregation({ field: 'credits.outstanding_balance', op: 'avg', alias: 'avg_balance' });
+                    addAggregation({ field: 'credits.delinquency', op: 'max', alias: 'max_delinquency' });
+                    break;
+            }
+            
+            updateDSL();
+            setTimeout(executeQuery, 100);
+        }
+    </script>
+</body>
+</html>
