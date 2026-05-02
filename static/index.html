@@ -1,1156 +1,904 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visual Aggregator - SQL-like JSON Aggregation</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Visual Aggregator</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+:root {
+  --bg:#0b0e14; --bg2:#111620; --bg3:#181e2a; --bg4:#1f2737;
+  --border:#2a3344; --border-focus:#e8a040;
+  --fg:#e2e8f0; --fg-dim:#8899aa; --fg-muted:#556677;
+  --accent:#e8a040; --accent2:#f0c060; --accent-bg:rgba(232,160,64,0.08);
+  --green:#4ade80; --green-bg:rgba(74,222,128,0.08);
+  --red:#f87171; --red-bg:rgba(248,113,113,0.08);
+  --blue:#60a5fa; --blue-bg:rgba(96,165,250,0.08);
+  --orange:#fb923c; --orange-bg:rgba(251,146,60,0.08);
+  --purple:#a78bfa; --purple-bg:rgba(167,139,250,0.08);
+  --teal:#2dd4bf; --teal-bg:rgba(45,212,191,0.08);
+  --radius:8px; --radius-lg:12px;
+  --font-ui:'Plus Jakarta Sans',sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{font-size:14px}
+body{font-family:var(--font-ui);background:var(--bg);color:var(--fg);min-height:100vh;line-height:1.5}
+body::before{content:'';position:fixed;top:-200px;left:-200px;width:600px;height:600px;
+  background:radial-gradient(circle,rgba(232,160,64,0.04) 0%,transparent 70%);pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;bottom:-300px;right:-200px;width:800px;height:800px;
+  background:radial-gradient(circle,rgba(96,165,250,0.03) 0%,transparent 70%);pointer-events:none;z-index:0}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--fg-muted)}
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
+.app-container{position:relative;z-index:1;max-width:1440px;margin:0 auto;padding:20px 24px 40px}
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
+.app-header{display:flex;align-items:center;gap:14px;margin-bottom:24px;padding-bottom:18px;border-bottom:1px solid var(--border)}
+.app-header .logo{width:38px;height:38px;background:linear-gradient(135deg,var(--accent),#d4802a);
+  border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;color:#0b0e14;font-weight:800;flex-shrink:0}
+.app-header h1{font-size:1.4rem;font-weight:700;letter-spacing:-0.02em}
+.app-header h1 span{color:var(--accent)}
+.app-header .subtitle{font-size:0.78rem;color:var(--fg-muted);margin-left:auto}
 
-        header {
-            text-align: center;
-            color: white;
-            margin-bottom: 30px;
-        }
+.main-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:1024px){.main-grid{grid-template-columns:1fr}}
+.full-width{grid-column:1/-1}
 
-        header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.card-header{display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--bg3);
+  border-bottom:1px solid var(--border);font-weight:600;font-size:0.85rem;text-transform:uppercase;
+  letter-spacing:0.04em;color:var(--fg-dim)}
+.card-header i{font-size:0.8rem}
+.card-header .header-desc{font-weight:400;font-size:0.72rem;color:var(--fg-muted);text-transform:none;letter-spacing:0;margin-left:auto}
+.card-body{padding:16px}
 
-        header p {
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
+label{display:block;font-size:0.75rem;font-weight:600;color:var(--fg-dim);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:5px}
+select,input[type="text"],input[type="number"],input[type="date"]{
+  width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);
+  border-radius:var(--radius);color:var(--fg);font-family:var(--font-ui);font-size:0.85rem;
+  transition:border-color 0.15s,box-shadow 0.15s;outline:none}
+select:focus,input:focus{border-color:var(--border-focus);box-shadow:0 0 0 2px rgba(232,160,64,0.15)}
+select{cursor:pointer}
 
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--border);
+  border-radius:var(--radius);background:var(--bg3);color:var(--fg);font-family:var(--font-ui);
+  font-size:0.8rem;font-weight:500;cursor:pointer;transition:all 0.15s;white-space:nowrap}
+.btn:hover{background:var(--bg4);border-color:var(--fg-muted)}
+.btn-accent{background:linear-gradient(135deg,var(--accent),#d4802a);color:#0b0e14;border-color:var(--accent);font-weight:700}
+.btn-accent:hover{filter:brightness(1.1);background:linear-gradient(135deg,var(--accent2),var(--accent))}
+.btn-green{border-color:var(--green);color:var(--green)}.btn-green:hover{background:var(--green-bg)}
+.btn-red{border-color:var(--red);color:var(--red);font-size:0.75rem;padding:5px 8px}.btn-red:hover{background:var(--red-bg)}
+.btn-blue{border-color:var(--blue);color:var(--blue)}.btn-blue:hover{background:var(--blue-bg)}
+.btn-orange{border-color:var(--orange);color:var(--orange)}.btn-orange:hover{background:var(--orange-bg)}
+.btn-purple{border-color:var(--purple);color:var(--purple)}.btn-purple:hover{background:var(--purple-bg)}
+.btn-teal{border-color:var(--teal);color:var(--teal)}.btn-teal:hover{background:var(--teal-bg)}
+.btn-sm{padding:5px 10px;font-size:0.75rem}.btn-icon{padding:5px 8px}
 
-        @media (max-width: 1200px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
-        }
+.row{display:flex;gap:10px;align-items:flex-end}.row+.row{margin-top:10px}
+.col{flex:1;min-width:0}.col-auto{flex:0 0 auto}
 
-        .panel {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-        }
+.filter-row,.agg-row{display:flex;gap:8px;align-items:flex-end;padding:10px 12px;
+  background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;transition:border-color 0.15s}
+.filter-row:hover,.agg-row:hover{border-color:var(--fg-muted)}
+.local-filter-row{display:flex;gap:8px;align-items:flex-end;padding:10px 12px;
+  background:var(--bg);border:1px solid rgba(251,146,60,0.2);border-radius:var(--radius);margin-bottom:8px;transition:border-color 0.15s}
+.local-filter-row:hover{border-color:rgba(251,146,60,0.5)}
 
-        .panel h2 {
-            color: #667eea;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #eee;
-        }
+.gb-container{display:flex;flex-wrap:wrap;gap:6px;min-height:36px;padding:8px;
+  background:var(--bg);border:1px solid var(--border);border-radius:var(--radius)}
+.gb-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;
+  background:var(--accent-bg);border:1px solid rgba(232,160,64,0.25);border-radius:20px;font-size:0.78rem;color:var(--accent2);font-weight:500}
+.gb-chip button{background:none;border:none;color:var(--accent);cursor:pointer;font-size:0.7rem;padding:0;opacity:0.7;transition:opacity 0.15s}
+.gb-chip button:hover{opacity:1}
 
-        .form-group {
-            margin-bottom: 20px;
-        }
+.code-block{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);
+  padding:14px;font-family:var(--font-mono);font-size:0.78rem;line-height:1.6;
+  color:var(--fg-dim);overflow-x:auto;max-height:300px;overflow-y:auto;white-space:pre-wrap;word-break:break-word}
+.code-block .key{color:var(--blue)}.code-block .str{color:var(--green)}.code-block .num{color:var(--accent)}
 
-        .form-group label {
-            display: block;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 8px;
-        }
+.result-table-wrap{overflow-x:auto;max-height:400px;overflow-y:auto}
+.result-table{width:100%;border-collapse:collapse;font-size:0.8rem}
+.result-table th{position:sticky;top:0;background:var(--bg3);padding:8px 12px;text-align:left;
+  font-weight:600;color:var(--accent);border-bottom:2px solid var(--border);white-space:nowrap;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.03em}
+.result-table td{padding:7px 12px;border-bottom:1px solid var(--border);color:var(--fg);font-family:var(--font-mono);font-size:0.78rem}
+.result-table tr:hover td{background:var(--accent-bg)}
+.result-table td.num-cell{text-align:right;color:var(--accent2)}
+.result-table td.null-cell{color:var(--fg-muted);font-style:italic}
 
-        select, input[type="text"], input[type="number"] {
-            width: 100%;
-            padding: 10px 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: border-color 0.3s;
-        }
+.data-viewer{max-height:400px;overflow-y:auto}
 
-        select:focus, input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:12px}
+.tab{padding:8px 16px;font-size:0.8rem;font-weight:500;color:var(--fg-muted);cursor:pointer;
+  border-bottom:2px solid transparent;transition:all 0.15s;background:none;border-top:none;border-left:none;border-right:none;font-family:var(--font-ui)}
+.tab:hover{color:var(--fg-dim)}.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
 
-        .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
+.toast-container{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{padding:10px 16px;border-radius:var(--radius);font-size:0.82rem;font-weight:500;
+  animation:slideIn 0.25s ease-out;max-width:380px;box-shadow:0 8px 24px rgba(0,0,0,0.4)}
+.toast-success{background:#1a3a2a;border:1px solid var(--green);color:var(--green)}
+.toast-error{background:#3a1a1a;border:1px solid var(--red);color:var(--red)}
+.toast-info{background:#1a2a3a;border:1px solid var(--blue);color:var(--blue)}
+@keyframes slideIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
 
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
-        }
+.empty-state{text-align:center;padding:32px 16px;color:var(--fg-muted);font-size:0.85rem}
+.empty-state i{font-size:2rem;margin-bottom:10px;display:block;opacity:0.4}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;animation:spin 0.6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-        .btn-secondary {
-            background: #f0f0f0;
-            color: #333;
-        }
+.section{margin-bottom:16px}
+.params-hint{font-size:0.7rem;color:var(--fg-muted);font-style:italic;margin-top:3px}
 
-        .btn-secondary:hover {
-            background: #e0e0e0;
-        }
+.presets-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.preset-btn{padding:5px 10px;font-size:0.72rem;border-radius:20px;background:var(--bg4);
+  border:1px solid var(--border);color:var(--fg-dim);cursor:pointer;transition:all 0.15s;font-family:var(--font-ui);font-weight:500}
+.preset-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}
 
-        .btn-danger {
-            background: #ff4757;
-        }
+.local-card{border-color:rgba(251,146,60,0.25)}
+.local-card .card-header{background:rgba(251,146,60,0.06)}
+.local-card .card-header i{color:var(--orange)}
 
-        .btn-danger:hover {
-            background: #ff3344;
-        }
+/* ── Format badge ── */
+.fmt-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;
+  font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;flex-shrink:0}
+.fmt-json{background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);color:var(--blue)}
+.fmt-xml{background:rgba(251,146,60,0.15);border:1px solid rgba(251,146,60,0.3);color:var(--orange)}
+.fmt-builtin{background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.25);color:var(--green)}
 
-        .filter-row, .group-row, .agg-row {
-            display: grid;
-            grid-template-columns: 2fr 1fr 2fr auto;
-            gap: 10px;
-            margin-bottom: 10px;
-            align-items: center;
-        }
+/* ── XSD badge ── */
+.xsd-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:10px;
+  font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;
+  background:rgba(167,139,250,0.15);border:1px solid rgba(167,139,250,0.3);color:var(--purple);cursor:pointer}
+.xsd-badge:hover{background:rgba(167,139,250,0.25)}
 
-        .group-row {
-            grid-template-columns: 2fr auto;
-        }
+/* ── Upload zone ── */
+.upload-zone{border:2px dashed var(--border);border-radius:var(--radius-lg);padding:20px;
+  text-align:center;cursor:pointer;transition:all 0.2s;position:relative}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:var(--accent-bg)}
+.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-zone .upload-icon{font-size:1.8rem;margin-bottom:8px;color:var(--fg-muted)}
+.upload-zone .upload-text{font-size:0.82rem;color:var(--fg-muted)}
+.upload-zone .upload-sub{font-size:0.72rem;color:var(--fg-muted);margin-top:4px;opacity:0.6}
 
-        .section-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #666;
-            margin: 20px 0 10px 0;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+/* ── Dataset list ── */
+.dataset-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--radius);
+  cursor:pointer;transition:background 0.12s;border:1px solid transparent}
+.dataset-item:hover{background:var(--bg3);border-color:var(--border)}
+.dataset-item.active{background:var(--accent-bg);border-color:rgba(232,160,64,0.3)}
+.dataset-item .ds-name{flex:1;font-size:0.82rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dataset-item .ds-actions{display:flex;gap:4px;opacity:0;transition:opacity 0.15s;flex-shrink:0}
+.dataset-item:hover .ds-actions{opacity:1}
 
-        .add-btn {
-            background: #2ed573;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-            margin-top: 10px;
-        }
+/* ── XSD panel ── */
+.xsd-panel{background:var(--purple-bg);border:1px solid rgba(167,139,250,0.2);border-radius:var(--radius);
+  padding:12px;margin-top:10px;font-size:0.78rem}
+.xsd-hints-list{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.xsd-hint-tag{padding:2px 8px;border-radius:10px;font-size:0.68rem;font-family:var(--font-mono)}
+.xsd-string-tag{background:rgba(96,165,250,0.12);color:var(--blue);border:1px solid rgba(96,165,250,0.25)}
+.xsd-array-tag{background:rgba(251,146,60,0.12);color:var(--orange);border:1px solid rgba(251,146,60,0.25)}
 
-        .add-btn:hover {
-            background: #26c96b;
-        }
+/* ── Agg params expanded ── */
+.agg-params-row{display:flex;gap:8px;align-items:flex-end;padding:6px 12px 10px;
+  background:var(--bg3);border:1px solid var(--border);border-top:none;
+  border-radius:0 0 var(--radius) var(--radius);margin-bottom:8px;flex-wrap:wrap}
+.agg-params-row label{font-size:0.68rem;margin-bottom:3px}
+.agg-params-row input,.agg-params-row select{font-size:0.78rem;padding:5px 8px}
 
-        .remove-btn {
-            background: #ff4757;
-            color: white;
-            border: none;
-            width: 30px;
-            height: 30px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-
-        .dsl-preview {
-            background: #1e1e1e;
-            color: #d4d4d4;
-            padding: 15px;
-            border-radius: 8px;
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 13px;
-            overflow-x: auto;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        .result-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-            font-size: 14px;
-        }
-
-        .result-table th, .result-table td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #e0e0e0;
-        }
-
-        .result-table th {
-            background: #f8f9fa;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .result-table tr:hover {
-            background: #f8f9fa;
-        }
-
-        .upload-area {
-            border: 2px dashed #ccc;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            margin-bottom: 15px;
-            transition: border-color 0.3s;
-        }
-
-        .upload-area:hover {
-            border-color: #667eea;
-        }
-
-        .dataset-select {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #666;
-        }
-
-        .spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 10px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .error-message {
-            background: #ffebee;
-            color: #c62828;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 15px;
-        }
-
-        .success-message {
-            background: #e8f5e9;
-            color: #2e7d32;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 15px;
-        }
-
-        .examples-section {
-            margin-top: 30px;
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-        }
-
-        .example-query {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .example-query:hover {
-            background: #e8eaf6;
-        }
-
-        .example-query h4 {
-            color: #667eea;
-            margin-bottom: 8px;
-        }
-
-        .example-query code {
-            background: #1e1e1e;
-            color: #d4d4d4;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 12px;
-        }
-
-        .checkbox-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .checkbox-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .checkbox-item input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-        }
-
-        .special-agg-section {
-            background: #fff3cd;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 15px;
-        }
-
-        .special-agg-section h4 {
-            color: #856404;
-            margin-bottom: 10px;
-        }
-    </style>
+@media(max-width:640px){
+  .app-container{padding:12px}
+  .filter-row,.agg-row,.local-filter-row{flex-wrap:wrap}
+  .row{flex-direction:column}.row .col{width:100%}
+}
+</style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🔍 Visual Aggregator</h1>
-            <p>SQL-like aggregation for JSON data with nested array support</p>
-        </header>
+<div class="toast-container" id="toastContainer"></div>
+<div class="app-container">
 
-        <div class="main-content">
-            <!-- Left Panel: Query Builder -->
-            <div class="panel">
-                <h2>Query Builder</h2>
+  <header class="app-header">
+    <div class="logo"><i class="fas fa-layer-group"></i></div>
+    <h1>Visual <span>Aggregator</span></h1>
+    <span class="subtitle">SQL-like aggregation · JSON · XML · XSD hints</span>
+  </header>
 
-                <!-- Dataset Selection -->
-                <div class="form-group">
-                    <label for="dataset">Dataset</label>
-                    <div class="dataset-select">
-                        <select id="dataset" onchange="loadSchema()">
-                            <option value="">Select dataset...</option>
-                        </select>
-                        <button class="btn btn-secondary" onclick="document.getElementById('fileUpload').click()">Upload JSON</button>
-                        <input type="file" id="fileUpload" accept=".json" style="display:none" onchange="uploadFile()">
-                        <button class="btn btn-secondary" id="viewRawBtn" onclick="viewRawJson()" style="display:none;">👁️ View Raw JSON</button>
-                    </div>
-                </div>
+  <!-- ══ DATA SOURCE ══ -->
+  <div class="card full-width" style="margin-bottom:20px">
+    <div class="card-header"><i class="fas fa-database" style="color:var(--accent)"></i> Data Source</div>
+    <div class="card-body">
+      <div class="row" style="align-items:flex-start;gap:20px">
 
-                <!-- WHERE Clause -->
-                <div class="section-title">WHERE Clause (Filters)</div>
-                <div id="filters"></div>
-                <button class="add-btn" onclick="addFilter()">+ Add Filter</button>
+        <!-- Upload zone -->
+        <div class="col" style="max-width:320px">
+          <label>Upload dataset</label>
+          <div class="upload-zone" id="uploadZone">
+            <input type="file" accept=".json,.xml" id="fileUpload" onchange="handleFileUpload(event)">
+            <div class="upload-icon"><i class="fas fa-file-upload"></i></div>
+            <div class="upload-text">Klik atau drag file ke sini</div>
+            <div class="upload-sub">JSON (.json) · XML (.xml)</div>
+          </div>
 
-                <!-- GROUP BY -->
-                <div class="section-title">GROUP BY</div>
-                <div id="groupByFields"></div>
-                <button class="add-btn" onclick="addGroupByField()">+ Add Group By Field</button>
-
-                <!-- Aggregations -->
-                <div class="section-title">Aggregations</div>
-                <div id="aggregations"></div>
-                <button class="add-btn" onclick="addAggregation()">+ Add Aggregation</button>
-
-                <!-- Special Aggregations for Time Series -->
-                <div class="special-agg-section">
-                    <h4>⏱️ Special Time-Series Aggregations</h4>
-                    <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
-                        For analyzing historical data in last_24_delq_hist and last_24_coll_hist arrays
-                    </p>
-                    <div class="form-group">
-                        <label>Last N Months</label>
-                        <input type="number" id="monthsCount" value="6" min="1" max="24" style="width: 100px;">
-                    </div>
-                    <button class="add-btn" onclick="addSpecialAgg('worst_delinquency')">Worst Delinquency</button>
-                    <button class="add-btn" onclick="addSpecialAgg('max_collectability')">Max Collectability</button>
-                    <button class="add-btn" onclick="addSpecialAgg('ever_has_collectability')">Ever Has Bad Collectability</button>
-                </div>
-
-                <!-- Actions -->
-                <div style="margin-top: 25px; display: flex; gap: 10px;">
-                    <button class="btn" onclick="executeQuery()">▶ Execute Query</button>
-                    <button class="btn btn-secondary" onclick="resetForm()">↺ Reset</button>
-                </div>
+          <!-- XSD upload (appears after XML is loaded) -->
+          <div id="xsdUploadArea" style="margin-top:10px;display:none">
+            <label>Upload XSD (opsional, untuk dataset XML aktif)</label>
+            <div style="display:flex;gap:6px">
+              <label class="btn btn-purple btn-sm" style="cursor:pointer;flex:1;justify-content:center">
+                <i class="fas fa-file-code"></i> Upload XSD
+                <input type="file" accept=".xsd,.xml" style="display:none" id="xsdUpload" onchange="handleXSDUpload(event)">
+              </label>
+              <button class="btn btn-sm" onclick="showXSDInfo()" id="xsdInfoBtn" style="display:none" title="Lihat hints XSD">
+                <i class="fas fa-info-circle"></i>
+              </button>
             </div>
-
-            <!-- Right Panel: DSL Preview & Results -->
-            <div class="panel">
-                <h2>DSL Preview & Results</h2>
-
-                <div class="section-title">Request DSL (JSON)</div>
-                <div class="dsl-preview" id="dslPreview">{
-  "dataset": "employees",
-  "where": {},
-  "groupBy": [],
-  "aggregations": []
-}</div>
-
-                <div class="section-title" style="margin-top: 20px;">Results</div>
-                <div id="results">
-                    <p style="color: #666; text-align: center; padding: 40px;">
-                        Execute a query to see results
-                    </p>
-                </div>
-            </div>
+            <div id="xsdPanel" style="display:none"></div>
+          </div>
         </div>
 
-        <!-- Example Queries -->
-        <div class="examples-section">
-            <h2 style="color: #667eea; margin-bottom: 20px;">📚 Example Queries</h2>
-            <p style="margin-bottom: 20px; color: #666;">Click on any example to load and execute it:</p>
-
-            <div class="example-query" onclick="loadExample(1)">
-                <h4>1. Rata-rata Outstanding Balance per Departemen</h4>
-                <p>Group by department, hitung rata-rata outstanding balance dari semua kredit.</p>
-                <code>Group By: department | Aggregations: avg(credits.outstanding_balance)</code>
-            </div>
-
-            <div class="example-query" onclick="loadExample(2)">
-                <h4>2. Total Initial Limit Kredit per Kota (Credit Card Only)</h4>
-                <p>Filter untuk product_type = "credit card", group by city, hitung total initial limit dan jumlah kredit.</p>
-                <code>Where: credits.product_type = "credit card" | Group By: city | Aggregations: sum(credits.initial_limit), count(*)</code>
-            </div>
-
-            <div class="example-query" onclick="loadExample(3)">
-                <h4>3. Maximum Delinquency Overall</h4>
-                <p>Tanpa group by, hitung maximum delinquency dari semua kredit.</p>
-                <code>Aggregations: max(credits.delinquency)</code>
-            </div>
-
-            <div class="example-query" onclick="loadExample(4)">
-                <h4>4. Worst Delinquency in Last 6 Months per Department</h4>
-                <p>Menganalisis historis delinquency 6 bulan terakhir.</p>
-                <code>Group By: department | Special: worst_delinquency (last 6 months from credits.last_24_delq_hist)</code>
-            </div>
-
-            <div class="example-query" onclick="loadExample(5)">
-                <h4>5. Max Collectability Code in Last 3 Months</h4>
-                <p>Melihat collectability terburuk dalam 3 bulan terakhir.</p>
-                <code>Special: max_collectability (last 3 months from credits.last_24_coll_hist)</code>
-            </div>
-
-            <div class="example-query" onclick="loadExample(6)">
-                <h4>6. Jumlah Akun Dibuka dalam 3 Bulan Terakhir</h4>
-                <p>Filter kredit yang dibuka dalam 3 bulan terakhir.</p>
-                <code>Where: credits.open_date > (3 months ago) | Aggregations: count(*)</code>
-            </div>
-
-            <div class="example-query" onclick="loadExample(7)">
-                <h4>7. Kredit dengan Collectability Code Buruk (3, 4, atau 5)</h4>
-                <p>Filter untuk mendeteksi kredit bermasalah.</p>
-                <code>Where: credits.collectability_code IN [3,4,5] | Aggregations: count(*), sum(credits.outstanding_balance)</code>
-            </div>
-
-            <div class="example-query" onclick="loadExample(8)">
-                <h4>8. Statistik Kredit per Product Type</h4>
-                <p>Analisis lengkap per jenis produk kredit.</p>
-                <code>Group By: credits.product_type | Aggregations: count(*), avg(credits.outstanding_balance), max(credits.delinquency)</code>
-            </div>
+        <!-- Dataset list -->
+        <div class="col">
+          <label>Dataset tersedia</label>
+          <div id="datasetList" style="display:flex;flex-direction:column;gap:4px;max-height:180px;overflow-y:auto;
+            background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:6px">
+            <div class="empty-state" style="padding:16px"><i class="fas fa-database"></i>Memuat...</div>
+          </div>
         </div>
+
+        <!-- Data preview button -->
+        <div class="col-auto" style="align-self:flex-end">
+          <button class="btn btn-sm" onclick="toggleDataViewer()"><i class="fas fa-eye"></i> Preview data</button>
+        </div>
+      </div>
+
+      <!-- Data viewer -->
+      <div id="dataViewerArea" style="display:none;margin-top:12px">
+        <div class="code-block data-viewer" id="dataViewer"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-grid">
+    <!-- ══ LEFT: BUILDER ══ -->
+    <div>
+
+      <!-- Presets -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header"><i class="fas fa-bolt" style="color:var(--accent)"></i> Query Presets</div>
+        <div class="card-body">
+          <div class="presets-row" id="presetsRow">
+            <button class="preset-btn" onclick="loadPreset(0)">Avg outstanding/dept</button>
+            <button class="preset-btn" onclick="loadPreset(1)">CC limit/kota</button>
+            <button class="preset-btn" onclick="loadPreset(2)">Max delinquency</button>
+            <button class="preset-btn" onclick="loadPreset(3)">Worst delq last 6mo</button>
+            <button class="preset-btn" onclick="loadPreset(4)">Max coll last 3mo</button>
+            <button class="preset-btn" onclick="loadPreset(5)">Ever coll≥3 last 3mo</button>
+            <button class="preset-btn" onclick="loadPreset(6)">Active loans/dept</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- LOCAL FILTER -->
+      <div class="card local-card" style="margin-bottom:20px">
+        <div class="card-header">
+          <i class="fas fa-filter"></i> Local Filter
+          <span class="header-desc">Filter elemen array sebelum agregasi. Parent tanpa elemen tetap muncul.</span>
+        </div>
+        <div class="card-body">
+          <div class="row" style="margin-bottom:10px">
+            <div class="col" style="max-width:280px">
+              <label>Array</label>
+              <select id="lfArraySelect" onchange="onLocalFilterArrayChange()">
+                <option value="">-- tidak ada --</option>
+              </select>
+            </div>
+            <div class="col-auto">
+              <button class="btn btn-red btn-sm" onclick="clearLocalFilter()"><i class="fas fa-trash"></i> Clear</button>
+            </div>
+          </div>
+          <div id="lfConditionsContainer"></div>
+          <button class="btn btn-sm btn-orange" id="lfAddBtn" onclick="addLocalFilterCondition()" style="display:none">
+            <i class="fas fa-plus"></i> Tambah Kondisi
+          </button>
+        </div>
+      </div>
+
+      <!-- WHERE (Global) -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header">
+          <i class="fas fa-globe" style="color:var(--blue)"></i> WHERE (Global)
+          <span class="header-desc">Filter parent record setelah local filter.</span>
+        </div>
+        <div class="card-body">
+          <div id="filtersContainer"></div>
+          <button class="btn btn-sm btn-blue" onclick="addFilter()"><i class="fas fa-plus"></i> Tambah Filter</button>
+        </div>
+      </div>
+
+      <!-- GROUP BY -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header"><i class="fas fa-object-group" style="color:var(--accent)"></i> GROUP BY</div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col" style="max-width:280px"><select id="gbFieldSelect"></select></div>
+            <div class="col-auto"><button class="btn btn-sm btn-green" onclick="addGroupBy()"><i class="fas fa-plus"></i> Tambah</button></div>
+          </div>
+          <div class="gb-container" id="gbChips" style="margin-top:10px">
+            <span style="color:var(--fg-muted);font-size:0.78rem;padding:4px 0">Belum ada field</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Aggregations -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header"><i class="fas fa-calculator" style="color:var(--accent)"></i> Aggregations</div>
+        <div class="card-body">
+          <div id="aggContainer"></div>
+          <button class="btn btn-sm btn-green" onclick="addAggregation()"><i class="fas fa-plus"></i> Tambah Agregasi</button>
+        </div>
+      </div>
+
+      <button class="btn btn-accent" style="width:100%;padding:12px;font-size:0.95rem;justify-content:center" onclick="executeQuery()">
+        <i class="fas fa-play"></i> Execute Query
+      </button>
     </div>
 
-    <script>
-        // Global state
-        let schema = [];
-        let filters = [];
-        let groupByFields = [];
-        let aggregations = [];
+    <!-- ══ RIGHT: DSL + RESULTS ══ -->
+    <div>
+      <div class="card" style="margin-bottom:20px">
+        <div class="tabs">
+          <button class="tab active" onclick="switchTab('dsl',this)">DSL Preview</button>
+          <button class="tab" onclick="switchTab('result',this)">Hasil</button>
+        </div>
+        <div class="card-body">
+          <div id="dslPanel">
+            <div class="code-block" id="dslPreview">
+              <span style="color:var(--fg-muted)">Konfigurasi query akan muncul di sini</span>
+            </div>
+          </div>
+          <div id="resultPanel" style="display:none">
+            <div id="resultArea">
+              <div class="empty-state"><i class="fas fa-table"></i>Hasil agregasi akan muncul di sini</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            loadDatasets();
-        });
+<script>
+// ===================== State =====================
+let currentSchema = [];
+let currentDataset = '';
+let currentDatasetFormat = ''; // 'json' | 'xml' | 'builtin'
+let filters = [];
+let groupByFields = [];
+let aggregations = [];
+let localFilter = { arrayPath:'', conditions:[] };
+let filterIdCounter = 0, aggIdCounter = 0, lfIdCounter = 0;
+let datasetMeta = {}; // name → {format, xsdLoaded}
 
-        // Load available datasets
-        async function loadDatasets() {
-            try {
-                const response = await fetch('/api/datasets');
-                const datasets = await response.json();
-                
-                const select = document.getElementById('dataset');
-                select.innerHTML = '<option value="">Select dataset...</option>';
-                
-                datasets.forEach(ds => {
-                    const option = document.createElement('option');
-                    option.value = ds.name;
-                    option.textContent = `${ds.name} (${ds.count} records)`;
-                    select.appendChild(option);
-                });
-                
-                // Auto-select employees if available
-                if (datasets.some(d => d.name === 'employees')) {
-                    select.value = 'employees';
-                    loadSchema();
-                }
-            } catch (error) {
-                console.error('Error loading datasets:', error);
-            }
-        }
+const OPERATORS = [
+  {value:'$eq',label:'= (equal)'},{value:'$ne',label:'!= (not equal)'},
+  {value:'$gt',label:'> (gt)'},{value:'$gte',label:'>= (gte)'},
+  {value:'$lt',label:'< (lt)'},{value:'$lte',label:'<= (lte)'},
+  {value:'$in',label:'IN'},{value:'$contains',label:'contains'},
+  {value:'$notnull',label:'is not null'},{value:'$null',label:'is null'},
+];
 
-        // Load schema for selected dataset
-        async function loadSchema() {
-            const dataset = document.getElementById('dataset').value;
-            if (!dataset) {
-                document.getElementById('viewRawBtn').style.display = 'none';
-                return;
-            }
+// Window ops: need N. Date-window ops: need N + date_field + ref_date + unit.
+// ever/count_last_n also need value param.
+const AGG_OPS = [
+  {value:'sum',label:'SUM'},{value:'avg',label:'AVG'},
+  {value:'min',label:'MIN'},{value:'max',label:'MAX',dateWindow:true},
+  {value:'count',label:'COUNT'},{value:'count_distinct',label:'COUNT DISTINCT'},
+  {value:'worst_last_n',label:'WORST LAST N (index)',windowN:true},
+  {value:'max_last_n',label:'MAX LAST N (index)',windowN:true},
+  {value:'ever_has_last_n',label:'EVER HAS LAST N (index)',windowN:true,needsValue:true},
+  {value:'count_last_n',label:'COUNT LAST N (index)',windowN:true,needsValue:true},
+  {value:'sum_last_n',label:'SUM LAST N (index)',windowN:true},
+  {value:'count_date_last_n',label:'COUNT DATE LAST N (date_field)',dateWindow:true},
+];
 
-            try {
-                const response = await fetch(`/api/schema?dataset=${encodeURIComponent(dataset)}`);
-                schema = await response.json();
-                updateFieldDropdowns();
-                
-                // Show View Raw JSON button
-                document.getElementById('viewRawBtn').style.display = 'inline-block';
-            } catch (error) {
-                console.error('Error loading schema:', error);
-            }
-        }
+function getOpDef(op) { return AGG_OPS.find(o=>o.value===op)||{}; }
 
-        // Update all field dropdowns with schema fields
-        function updateFieldDropdowns() {
-            // Update filter field dropdowns
-            document.querySelectorAll('.filter-field').forEach(select => {
-                const currentValue = select.value;
-                select.innerHTML = '<option value="">Select field...</option>';
-                schema.forEach(field => {
-                    const option = document.createElement('option');
-                    option.value = field.name;
-                    option.textContent = `${field.name} (${field.type})`;
-                    select.appendChild(option);
-                });
-                if (currentValue && schema.some(f => f.name === currentValue)) {
-                    select.value = currentValue;
-                }
-            });
+// ===================== Init =====================
+document.addEventListener('DOMContentLoaded', () => {
+  loadDatasets();
+  addFilter(); addAggregation(); updateDSL();
+  setupDragDrop();
+});
 
-            // Update group by field dropdowns
-            document.querySelectorAll('.groupby-field').forEach(select => {
-                const currentValue = select.value;
-                select.innerHTML = '<option value="">Select field...</option>';
-                schema.forEach(field => {
-                    const option = document.createElement('option');
-                    option.value = field.name;
-                    option.textContent = `${field.name} (${field.type})`;
-                    select.appendChild(option);
-                });
-                if (currentValue && schema.some(f => f.name === currentValue)) {
-                    select.value = currentValue;
-                }
-            });
+// ===================== API =====================
+async function apiGet(url){ return (await fetch(url)).json(); }
+async function apiPost(url,body,contentType='application/json'){
+  const res = await fetch(url,{method:'POST',headers:{'Content-Type':contentType},body:typeof body==='string'?body:JSON.stringify(body)});
+  if(!res.ok){const err=await res.text();throw new Error(err);}
+  return res.json();
+}
 
-            // Update aggregation field dropdowns
-            document.querySelectorAll('.agg-field').forEach(select => {
-                const currentValue = select.value;
-                select.innerHTML = '<option value="">Select field...</option>';
-                schema.forEach(field => {
-                    const option = document.createElement('option');
-                    option.value = field.name;
-                    option.textContent = `${field.name} (${field.type})`;
-                    select.appendChild(option);
-                });
-                if (currentValue && schema.some(f => f.name === currentValue)) {
-                    select.value = currentValue;
-                }
-            });
-        }
+// ===================== Drag & Drop =====================
+function setupDragDrop(){
+  const zone = document.getElementById('uploadZone');
+  zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag-over')});
+  zone.addEventListener('dragleave',()=>zone.classList.remove('drag-over'));
+  zone.addEventListener('drop',e=>{
+    e.preventDefault(); zone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0]; if(file) processFile(file,'data');
+  });
+}
 
-        // Add a new filter row
-        function addFilter(values = {}) {
-            const container = document.getElementById('filters');
-            const index = filters.length;
-            
-            const div = document.createElement('div');
-            div.className = 'filter-row';
-            div.dataset.index = index;
-            
-            div.innerHTML = `
-                <select class="filter-field" onchange="updateFilter(${index}, 'field', this.value)">
-                    <option value="">Select field...</option>
-                    ${schema.map(f => `<option value="${f.name}" ${values.field === f.name ? 'selected' : ''}>${f.name} (${f.type})</option>`).join('')}
-                </select>
-                <select class="filter-op" onchange="updateFilter(${index}, 'op', this.value)">
-                    <option value="$eq" ${values.op === '$eq' ? 'selected' : ''}>= equals</option>
-                    <option value="$ne" ${values.op === '$ne' ? 'selected' : ''}>≠ not equals</option>
-                    <option value="$gt" ${values.op === '$gt' ? 'selected' : ''}>> greater than</option>
-                    <option value="$gte" ${values.op === '$gte' ? 'selected' : ''}>≥ greater or equal</option>
-                    <option value="$lt" ${values.op === '$lt' ? 'selected' : ''}>< less than</option>
-                    <option value="$lte" ${values.op === '$lte' ? 'selected' : ''}>≤ less or equal</option>
-                    <option value="$in" ${values.op === '$in' ? 'selected' : ''}>IN (array)</option>
-                </select>
-                <input type="text" class="filter-value" placeholder="Value" 
-                       value="${values.value || ''}" 
-                       onchange="updateFilter(${index}, 'value', this.value)">
-                <button class="remove-btn" onclick="removeFilter(${index})">×</button>
-            `;
-            
-            container.appendChild(div);
-            filters.push(values);
-            updateDSL();
-        }
+// ===================== Dataset List =====================
+async function loadDatasets(){
+  try {
+    const data = await apiGet('/api/datasets');
+    const xsdData = await apiGet('/api/xsd');
+    const xsdSet = new Set(xsdData.xsdDatasets||[]);
+    renderDatasetList(data.datasets, xsdSet);
+  } catch(e){ showToast('Gagal memuat dataset','error'); }
+}
 
-        function updateFilter(index, key, value) {
-            filters[index] = { ...filters[index], [key]: value };
-            updateDSL();
-        }
+function renderDatasetList(names, xsdSet){
+  const el = document.getElementById('datasetList');
+  if(!names||!names.length){el.innerHTML='<div class="empty-state" style="padding:16px"><i class="fas fa-database"></i>Belum ada dataset</div>';return;}
+  el.innerHTML = names.map(name=>{
+    const meta = datasetMeta[name]||{};
+    const fmt = meta.format||'builtin';
+    const hasXSD = xsdSet.has(name)||meta.xsdLoaded;
+    const fmtBadge = fmt==='xml'
+      ? '<span class="fmt-badge fmt-xml"><i class="fas fa-code"></i> XML</span>'
+      : fmt==='json'
+      ? '<span class="fmt-badge fmt-json"><i class="fas fa-brackets-curly"></i> JSON</span>'
+      : '<span class="fmt-badge fmt-builtin"><i class="fas fa-star"></i> builtin</span>';
+    const xsdBadge = hasXSD ? '<span class="xsd-badge" title="XSD hints aktif"><i class="fas fa-check-square"></i> XSD</span>' : '';
+    return `<div class="dataset-item${name===currentDataset?' active':''}" onclick="selectDataset('${name}','${fmt}')">
+      <div class="ds-name">${escapeHtml(name)}</div>
+      ${fmtBadge}${xsdBadge?'&nbsp;'+xsdBadge:''}
+    </div>`;
+  }).join('');
+}
 
-        function removeFilter(index) {
-            filters.splice(index, 1);
-            renderFilters();
-            updateDSL();
-        }
+async function selectDataset(name, fmt){
+  currentDataset = name;
+  currentDatasetFormat = fmt||'builtin';
+  try {
+    currentSchema = await apiGet('/api/schema?dataset='+encodeURIComponent(name));
+    refreshFieldSelectors(); refreshLocalFilterArraySelect();
+    filters=[]; groupByFields=[]; aggregations=[];
+    localFilter={arrayPath:'',conditions:[]};
+    filterIdCounter=0; aggIdCounter=0; lfIdCounter=0;
+    addFilter(); addAggregation(); renderLocalFilterConditions(); renderGroupByChips(); updateDSL();
+    const rawData = await apiGet('/api/data?dataset='+encodeURIComponent(name));
+    document.getElementById('dataViewer').innerHTML = syntaxHighlight(JSON.stringify(rawData,null,2));
+    // Show XSD upload area for XML datasets
+    const xsdArea = document.getElementById('xsdUploadArea');
+    xsdArea.style.display = (currentDatasetFormat==='xml'||currentDatasetFormat==='builtin')?'block':'none';
+    // Refresh dataset list to update active state
+    await loadDatasets();
+  } catch(e){ showToast('Gagal memuat skema: '+e.message,'error'); }
+}
 
-        function renderFilters() {
-            const container = document.getElementById('filters');
-            container.innerHTML = '';
-            filters.forEach((filter, i) => addFilterRow(i, filter));
-        }
+// ===================== File Upload =====================
+async function handleFileUpload(event){
+  const file = event.target.files[0]; if(!file) return;
+  await processFile(file,'data');
+  event.target.value='';
+}
 
-        function addFilterRow(index, values) {
-            const container = document.getElementById('filters');
-            const div = document.createElement('div');
-            div.className = 'filter-row';
-            
-            div.innerHTML = `
-                <select class="filter-field" onchange="updateFilter(${index}, 'field', this.value)">
-                    <option value="">Select field...</option>
-                    ${schema.map(f => `<option value="${f.name}" ${values.field === f.name ? 'selected' : ''}>${f.name} (${f.type})</option>`).join('')}
-                </select>
-                <select class="filter-op" onchange="updateFilter(${index}, 'op', this.value)">
-                    <option value="$eq" ${values.op === '$eq' ? 'selected' : ''}>= equals</option>
-                    <option value="$ne" ${values.op === '$ne' ? 'selected' : ''}>≠ not equals</option>
-                    <option value="$gt" ${values.op === '$gt' ? 'selected' : ''}>> greater than</option>
-                    <option value="$gte" ${values.op === '$gte' ? 'selected' : ''}>≥ greater or equal</option>
-                    <option value="$lt" ${values.op === '$lt' ? 'selected' : ''}>< less than</option>
-                    <option value="$lte" ${values.op === '$lte' ? 'selected' : ''}>≤ less or equal</option>
-                    <option value="$in" ${values.op === '$in' ? 'selected' : ''}>IN (array)</option>
-                </select>
-                <input type="text" class="filter-value" placeholder="Value" 
-                       value="${values.value || ''}" 
-                       onchange="updateFilter(${index}, 'value', this.value)">
-                <button class="remove-btn" onclick="removeFilter(${index})">×</button>
-            `;
-            
-            container.appendChild(div);
-        }
+async function processFile(file, type){
+  const isXML = file.name.toLowerCase().endsWith('.xml');
+  try {
+    const text = await file.text();
+    let result;
+    if(isXML){
+      result = await fetch('/api/upload',{
+        method:'POST',
+        headers:{'Content-Type':'application/xml'},
+        body:text
+      }).then(r=>r.json());
+    } else {
+      const parsed = JSON.parse(text);
+      const data = Array.isArray(parsed)?parsed:[parsed];
+      result = await apiPost('/api/upload', data);
+    }
+    datasetMeta[result.name] = {format: result.format||'json', xsdLoaded:false};
+    showToast(`"${result.name}" berhasil di-upload (${result.count} record · ${(result.format||'json').toUpperCase()})`,'success');
+    await loadDatasets();
+    await selectDataset(result.name, result.format||'json');
+  } catch(e){ showToast('Gagal upload: '+e.message,'error'); }
+}
 
-        // Add GROUP BY field
-        function addGroupByField(value = '') {
-            const container = document.getElementById('groupByFields');
-            const index = groupByFields.length;
-            
-            const div = document.createElement('div');
-            div.className = 'group-row';
-            
-            div.innerHTML = `
-                <select class="groupby-field" onchange="updateGroupBy(${index}, this.value)">
-                    <option value="">Select field...</option>
-                    ${schema.map(f => `<option value="${f.name}" ${value === f.name ? 'selected' : ''}>${f.name} (${f.type})</option>`).join('')}
-                </select>
-                <button class="remove-btn" onclick="removeGroupBy(${index})">×</button>
-            `;
-            
-            container.appendChild(div);
-            groupByFields.push(value);
-            updateDSL();
-        }
+// ===================== XSD Upload =====================
+async function handleXSDUpload(event){
+  const file = event.target.files[0]; if(!file) return;
+  if(!currentDataset){showToast('Pilih dataset terlebih dahulu','info');return;}
+  try {
+    const text = await file.text();
+    const result = await fetch('/api/upload/xsd?dataset='+encodeURIComponent(currentDataset),{
+      method:'POST',
+      headers:{'Content-Type':'application/xml'},
+      body:text
+    }).then(r=>r.json());
+    if(datasetMeta[currentDataset]) datasetMeta[currentDataset].xsdLoaded = true;
+    showToast(`XSD dimuat: ${result.arrayPaths} array paths, ${result.stringPaths} string paths`,'success');
+    document.getElementById('xsdInfoBtn').style.display='inline-flex';
+    await loadDatasets();
+    await showXSDInfo();
+  } catch(e){ showToast('Gagal upload XSD: '+e.message,'error'); }
+  event.target.value='';
+}
 
-        function updateGroupBy(index, value) {
-            groupByFields[index] = value;
-            updateDSL();
-        }
+async function showXSDInfo(){
+  if(!currentDataset)return;
+  try{
+    const info = await apiGet('/api/xsd/info?dataset='+encodeURIComponent(currentDataset));
+    const panel = document.getElementById('xsdPanel');
+    const btn = document.getElementById('xsdInfoBtn');
+    if(!info.arrayPaths.length && !info.stringPaths.length){panel.style.display='none';btn.style.display='none';return;}
+    btn.style.display='inline-flex';
+    panel.style.display='block';
+    panel.innerHTML = `<div class="xsd-panel">
+      <div style="font-weight:600;color:var(--purple);margin-bottom:6px"><i class="fas fa-check-square"></i> XSD Hints aktif</div>
+      ${info.arrayPaths.length?`<div style="margin-bottom:4px;font-size:0.72rem;color:var(--fg-muted)">Force array:</div>
+        <div class="xsd-hints-list">${info.arrayPaths.map(p=>`<span class="xsd-hint-tag xsd-array-tag">${escapeHtml(p)}</span>`).join('')}</div>`:''}
+      ${info.stringPaths.length?`<div style="margin-top:8px;margin-bottom:4px;font-size:0.72rem;color:var(--fg-muted)">Force string (no coerce):</div>
+        <div class="xsd-hints-list">${info.stringPaths.map(p=>`<span class="xsd-hint-tag xsd-string-tag">${escapeHtml(p)}</span>`).join('')}</div>`:''}
+    </div>`;
+  }catch(e){}
+}
 
-        function removeGroupBy(index) {
-            groupByFields.splice(index, 1);
-            renderGroupBy();
-            updateDSL();
-        }
+function toggleDataViewer(){
+  const a=document.getElementById('dataViewerArea');
+  a.style.display=a.style.display==='none'?'block':'none';
+}
 
-        function renderGroupBy() {
-            const container = document.getElementById('groupByFields');
-            container.innerHTML = '';
-            groupByFields.forEach((field, i) => {
-                const div = document.createElement('div');
-                div.className = 'group-row';
-                div.innerHTML = `
-                    <select class="groupby-field" onchange="updateGroupBy(${i}, this.value)">
-                        <option value="">Select field...</option>
-                        ${schema.map(f => `<option value="${f.name}" ${field === f.name ? 'selected' : ''}>${f.name} (${f.type})</option>`).join('')}
-                    </select>
-                    <button class="remove-btn" onclick="removeGroupBy(${i})">×</button>
-                `;
-                container.appendChild(div);
-            });
-        }
+// ===================== Field Selectors =====================
+function refreshFieldSelectors(){
+  const options = currentSchema.map(f=>{
+    const prefix = f.arrayPath?'↳ ':'';
+    return `<option value="${f.path}">${prefix}${f.path} [${f.type}]</option>`;
+  }).join('');
+  document.querySelectorAll('.filter-field-select').forEach(s=>{const v=s.value;s.innerHTML='<option value="">-- field --</option>'+options;s.value=v;});
+  document.getElementById('gbFieldSelect').innerHTML='<option value="">-- pilih field --</option>'+options;
+  document.querySelectorAll('.agg-field-select').forEach(s=>{const v=s.value;s.innerHTML='<option value="">-- field --</option>'+options;s.value=v;});
+}
 
-        // Add aggregation
-        function addAggregation(values = {}) {
-            const container = document.getElementById('aggregations');
-            const index = aggregations.length;
-            
-            const div = document.createElement('div');
-            div.className = 'agg-row';
-            
-            div.innerHTML = `
-                <select class="agg-field" onchange="updateAggregation(${index}, 'field', this.value)">
-                    <option value="">Select field...</option>
-                    ${schema.map(f => `<option value="${f.name}" ${values.field === f.name ? 'selected' : ''}>${f.name} (${f.type})</option>`).join('')}
-                </select>
-                <select class="agg-op" onchange="updateAggregation(${index}, 'op', this.value)">
-                    <option value="count" ${values.op === 'count' ? 'selected' : ''}>COUNT</option>
-                    <option value="sum" ${values.op === 'sum' ? 'selected' : ''}>SUM</option>
-                    <option value="avg" ${values.op === 'avg' ? 'selected' : ''}>AVG</option>
-                    <option value="min" ${values.op === 'min' ? 'selected' : ''}>MIN</option>
-                    <option value="max" ${values.op === 'max' ? 'selected' : ''}>MAX</option>
-                </select>
-                <input type="text" class="agg-alias" placeholder="Alias (e.g., total_amount)" 
-                       value="${values.alias || ''}" 
-                       onchange="updateAggregation(${index}, 'alias', this.value)">
-                <button class="remove-btn" onclick="removeAggregation(${index})">×</button>
-            `;
-            
-            container.appendChild(div);
-            aggregations.push(values);
-            updateDSL();
-        }
+function refreshLocalFilterArraySelect(){
+  const sel=document.getElementById('lfArraySelect');
+  const arrays=currentSchema.filter(f=>f.type==='array_object');
+  sel.innerHTML='<option value="">-- tidak ada --</option>'+arrays.map(a=>`<option value="${a.path}">${a.path} [array]</option>`).join('');
+}
 
-        function updateAggregation(index, key, value) {
-            aggregations[index] = { ...aggregations[index], [key]: value };
-            updateDSL();
-        }
+function getLocalFilterFieldOptions(){
+  const ap=localFilter.arrayPath;if(!ap)return'';
+  return currentSchema.filter(f=>f.arrayPath===ap&&f.path!==ap).map(f=>`<option value="${f.path}">${f.path.replace(ap+'.','')} [${f.type}]</option>`).join('');
+}
 
-        function removeAggregation(index) {
-            aggregations.splice(index, 1);
-            renderAggregations();
-            updateDSL();
-        }
+// ===================== Local Filter =====================
+function onLocalFilterArrayChange(){
+  localFilter.arrayPath=document.getElementById('lfArraySelect').value;
+  localFilter.conditions=[]; lfIdCounter=0;
+  renderLocalFilterConditions(); updateDSL();
+}
+function addLocalFilterCondition(){
+  if(!localFilter.arrayPath){showToast('Pilih array terlebih dahulu','info');return;}
+  localFilter.conditions.push({id:lfIdCounter++,field:'',op:'$eq',value:''});
+  renderLocalFilterConditions();
+}
+function removeLocalFilterCondition(id){
+  localFilter.conditions=localFilter.conditions.filter(c=>c.id!==id);
+  renderLocalFilterConditions(); updateDSL();
+}
+function renderLocalFilterConditions(){
+  const container=document.getElementById('lfConditionsContainer');
+  const addBtn=document.getElementById('lfAddBtn');
+  if(!localFilter.arrayPath){container.innerHTML='';addBtn.style.display='none';return;}
+  addBtn.style.display='inline-flex';
+  const fieldOpts=getLocalFilterFieldOptions();
+  const opOpts=OPERATORS.map(o=>`<option value="${o.value}">${o.label}</option>`).join('');
+  container.innerHTML=localFilter.conditions.map(c=>{
+    const noVal=['$notnull','$null'].includes(c.op);
+    return`<div class="local-filter-row" data-id="${c.id}">
+      <div class="col" style="max-width:35%"><select class="lf-field-select" onchange="onLFChange(${c.id},'field',this.value)">
+        <option value="">-- field --</option>${fieldOpts}</select></div>
+      <div class="col" style="max-width:25%"><select onchange="onLFChange(${c.id},'op',this.value);renderLocalFilterConditions();updateDSL();">${opOpts}</select></div>
+      <div class="col" style="${noVal?'display:none':''}"><input type="text" placeholder="nilai..." value="${escapeHtml(c.value)}"
+        oninput="onLFChange(${c.id},'value',this.value);updateDSL();"></div>
+      <div class="col-auto"><button class="btn btn-red btn-icon" onclick="removeLocalFilterCondition(${c.id})"><i class="fas fa-times"></i></button></div>
+    </div>`;
+  }).join('');
+  container.querySelectorAll('.local-filter-row').forEach(row=>{
+    const id=parseInt(row.dataset.id);const c=localFilter.conditions.find(x=>x.id===id);if(!c)return;
+    row.querySelector('.lf-field-select').value=c.field;
+    row.querySelectorAll('select')[1].value=c.op;
+  });
+}
+function onLFChange(id,key,value){const c=localFilter.conditions.find(x=>x.id===id);if(c){c[key]=value;updateDSL();}}
+function clearLocalFilter(){localFilter={arrayPath:'',conditions:[]};document.getElementById('lfArraySelect').value='';renderLocalFilterConditions();updateDSL();}
 
-        function renderAggregations() {
-            const container = document.getElementById('aggregations');
-            container.innerHTML = '';
-            aggregations.forEach((agg, i) => {
-                const div = document.createElement('div');
-                div.className = 'agg-row';
-                div.innerHTML = `
-                    <select class="agg-field" onchange="updateAggregation(${i}, 'field', this.value)">
-                        <option value="">Select field...</option>
-                        ${schema.map(f => `<option value="${f.name}" ${agg.field === f.name ? 'selected' : ''}>${f.name} (${f.type})</option>`).join('')}
-                    </select>
-                    <select class="agg-op" onchange="updateAggregation(${i}, 'op', this.value)">
-                        <option value="count" ${agg.op === 'count' ? 'selected' : ''}>COUNT</option>
-                        <option value="sum" ${agg.op === 'sum' ? 'selected' : ''}>SUM</option>
-                        <option value="avg" ${agg.op === 'avg' ? 'selected' : ''}>AVG</option>
-                        <option value="min" ${agg.op === 'min' ? 'selected' : ''}>MIN</option>
-                        <option value="max" ${agg.op === 'max' ? 'selected' : ''}>MAX</option>
-                    </select>
-                    <input type="text" class="agg-alias" placeholder="Alias" 
-                           value="${agg.alias || ''}" 
-                           onchange="updateAggregation(${i}, 'alias', this.value)">
-                    <button class="remove-btn" onclick="removeAggregation(${i})">×</button>
-                `;
-                container.appendChild(div);
-            });
-        }
+// ===================== Global Filters =====================
+function addFilter(){filters.push({id:filterIdCounter++,field:'',op:'$eq',value:''});renderFilters();}
+function removeFilter(id){filters=filters.filter(f=>f.id!==id);if(!filters.length)addFilter();else renderFilters();updateDSL();}
+function renderFilters(){
+  const container=document.getElementById('filtersContainer');
+  const options=currentSchema.map(f=>{const prefix=f.arrayPath?'↳ ':'';return`<option value="${f.path}">${prefix}${f.path} [${f.type}]</option>`;}).join('');
+  const opOptions=OPERATORS.map(o=>`<option value="${o.value}">${o.label}</option>`).join('');
+  container.innerHTML=filters.map(f=>{
+    const noVal=['$notnull','$null'].includes(f.op);
+    return`<div class="filter-row" data-id="${f.id}">
+      <div class="col" style="max-width:35%"><select class="filter-field-select" onchange="onFilterChange(${f.id},'field',this.value)">
+        <option value="">-- field --</option>${options}</select></div>
+      <div class="col" style="max-width:25%"><select onchange="onFilterChange(${f.id},'op',this.value);renderFilters();updateDSL();">${opOptions}</select></div>
+      <div class="col" style="${noVal?'display:none':''}"><input type="text" placeholder="nilai..." value="${escapeHtml(f.value)}"
+        oninput="onFilterChange(${f.id},'value',this.value);updateDSL();"></div>
+      <div class="col-auto"><button class="btn btn-red btn-icon" onclick="removeFilter(${f.id})"><i class="fas fa-times"></i></button></div>
+    </div>`;
+  }).join('');
+  container.querySelectorAll('.filter-row').forEach(row=>{
+    const id=parseInt(row.dataset.id);const f=filters.find(x=>x.id===id);if(!f)return;
+    row.querySelector('.filter-field-select').value=f.field;
+    row.querySelectorAll('select')[1].value=f.op;
+  });
+}
+function onFilterChange(id,key,value){const f=filters.find(x=>x.id===id);if(f){f[key]=value;updateDSL();}}
 
-        // Add special aggregation
-        function addSpecialAgg(type) {
-            const months = document.getElementById('monthsCount').value;
-            let agg;
-            
-            switch(type) {
-                case 'worst_delinquency':
-                    agg = {
-                        field: 'credits.last_24_delq_hist',
-                        op: 'max',
-                        alias: `worst_delq_last_${months}_months`,
-                        special: true,
-                        months: parseInt(months)
-                    };
-                    break;
-                case 'max_collectability':
-                    agg = {
-                        field: 'credits.last_24_coll_hist',
-                        op: 'max',
-                        alias: `max_coll_last_${months}_months`,
-                        special: true,
-                        months: parseInt(months)
-                    };
-                    break;
-                case 'ever_has_collectability':
-                    agg = {
-                        field: 'credits.last_24_coll_hist',
-                        op: 'ever_has',
-                        alias: 'ever_has_bad_coll',
-                        special: true,
-                        months: parseInt(months)
-                    };
-                    break;
-            }
-            
-            aggregations.push(agg);
-            renderAggregations();
-            updateDSL();
-        }
+// ===================== Group By =====================
+function addGroupBy(){
+  const sel=document.getElementById('gbFieldSelect');const val=sel.value;
+  if(!val){showToast('Pilih field terlebih dahulu','info');return;}
+  if(groupByFields.includes(val)){showToast('Field sudah ditambahkan','info');return;}
+  groupByFields.push(val);sel.value='';renderGroupByChips();updateDSL();
+}
+function removeGroupBy(field){groupByFields=groupByFields.filter(f=>f!==field);renderGroupByChips();updateDSL();}
+function renderGroupByChips(){
+  const c=document.getElementById('gbChips');
+  if(!groupByFields.length){c.innerHTML='<span style="color:var(--fg-muted);font-size:0.78rem;padding:4px 0">Belum ada field</span>';return;}
+  c.innerHTML=groupByFields.map(f=>`<span class="gb-chip">${f}<button onclick="removeGroupBy('${f}')"><i class="fas fa-times"></i></button></span>`).join('');
+}
 
-        // Upload file
-        async function uploadFile() {
-            const fileInput = document.getElementById('fileUpload');
-            const file = fileInput.files[0];
-            
-            if (!file) return;
-            
-            const formData = new FormData();
-            formData.append('file', file);
-            
-            try {
-                const response = await fetch('/api/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const result = await response.json();
-                
-                if (response.ok) {
-                    alert(`File uploaded successfully! Dataset: ${result.dataset} (${result.count} records)`);
-                    loadDatasets();
-                    document.getElementById('dataset').value = result.dataset;
-                    loadSchema();
-                } else {
-                    alert('Error: ' + result.error);
-                }
-            } catch (error) {
-                console.error('Error uploading file:', error);
-                alert('Error uploading file');
-            }
-            
-            fileInput.value = '';
-        }
+// ===================== Aggregations =====================
+function addAggregation(){
+  aggregations.push({id:aggIdCounter++,field:'',op:'sum',alias:'',params:{}});
+  renderAggregations();
+}
+function removeAggregation(id){
+  aggregations=aggregations.filter(a=>a.id!==id);
+  if(!aggregations.length)addAggregation();else renderAggregations();
+  updateDSL();
+}
 
-        // View Raw JSON
-        async function viewRawJson() {
-            const dataset = document.getElementById('dataset').value;
-            if (!dataset) return;
+function renderAggregations(){
+  const container=document.getElementById('aggContainer');
+  const options=currentSchema.map(f=>{const prefix=f.arrayPath?'↳ ':'';return`<option value="${f.path}">${prefix}${f.path} [${f.type}]</option>`;}).join('');
+  const opOptions=AGG_OPS.map(o=>`<option value="${o.value}">${o.label}</option>`).join('');
 
-            try {
-                const response = await fetch(`/api/raw-data?dataset=${encodeURIComponent(dataset)}`);
-                const data = await response.json();
-                
-                // Create modal
-                const modal = document.createElement('div');
-                modal.style.cssText = `
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: rgba(0,0,0,0.7);
-                    z-index: 1000;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                `;
-                
-                const modalContent = document.createElement('div');
-                modalContent.style.cssText = `
-                    background: white;
-                    border-radius: 12px;
-                    padding: 25px;
-                    max-width: 90%;
-                    max-height: 90%;
-                    width: 1200px;
-                    display: flex;
-                    flex-direction: column;
-                `;
-                
-                const header = document.createElement('div');
-                header.style.cssText = `
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 15px;
-                `;
-                
-                const title = document.createElement('h3');
-                title.textContent = `Raw JSON Data - ${dataset}`;
-                title.style.cssText = `margin: 0; color: #667eea;`;
-                
-                const closeBtn = document.createElement('button');
-                closeBtn.textContent = '✕';
-                closeBtn.style.cssText = `
-                    background: #ff4757;
-                    color: white;
-                    border: none;
-                    width: 35px;
-                    height: 35px;
-                    border-radius: 6px;
-                    cursor: pointer;
-                    font-size: 18px;
-                `;
-                closeBtn.onclick = () => document.body.removeChild(modal);
-                
-                header.appendChild(title);
-                header.appendChild(closeBtn);
-                
-                const jsonContainer = document.createElement('pre');
-                jsonContainer.style.cssText = `
-                    background: #1e1e1e;
-                    color: #d4d4d4;
-                    padding: 15px;
-                    border-radius: 8px;
-                    overflow: auto;
-                    flex: 1;
-                    font-family: 'Consolas', 'Monaco', monospace;
-                    font-size: 13px;
-                    white-space: pre-wrap;
-                    word-wrap: break-word;
-                `;
-                jsonContainer.textContent = JSON.stringify(data, null, 2);
-                
-                modalContent.appendChild(header);
-                modalContent.appendChild(jsonContainer);
-                modal.appendChild(modalContent);
-                document.body.appendChild(modal);
-                
-                // Close on outside click
-                modal.onclick = (e) => {
-                    if (e.target === modal) {
-                        document.body.removeChild(modal);
-                    }
-                };
-            } catch (error) {
-                console.error('Error loading raw data:', error);
-                alert('Error loading raw data: ' + error.message);
-            }
-        }
+  container.innerHTML=aggregations.map(a=>{
+    const def = getOpDef(a.op);
+    const needsN = def.windowN;
+    const needsValue = def.needsValue;
+    const needsDate = def.dateWindow;
+    const n = a.params?.n||6;
+    const val = a.params?.value??'';
+    const dateField = a.params?.date_field||'';
+    const refDate = a.params?.ref_date||'';
+    const unit = a.params?.unit||'month';
 
-        // Update DSL preview
-        function updateDSL() {
-            const dataset = document.getElementById('dataset').value;
-            
-            const whereClause = {};
-            filters.forEach(f => {
-                if (f.field && f.op && f.value !== undefined) {
-                    let value = f.value;
-                    // Try to parse numbers
-                    if (!isNaN(value) && value !== '') {
-                        value = parseFloat(value);
-                        if (Number.isInteger(value)) {
-                            value = parseInt(value);
-                        }
-                    }
-                    // Handle IN operator
-                    if (f.op === '$in') {
-                        value = value.split(',').map(v => v.trim());
-                    }
-                    whereClause[f.field] = { [f.op]: value };
-                }
-            });
-            
-            const groupBy = groupByFields.filter(f => f !== '');
-            
-            const aggs = aggregations.filter(a => a.field && a.op).map(a => ({
-                field: a.field,
-                op: a.op,
-                alias: a.alias || `${a.op}_${a.field.replace(/\./g, '_')}`
-            }));
-            
-            const dsl = {
-                dataset: dataset || 'employees',
-                where: whereClause,
-                groupBy: groupBy,
-                aggregations: aggs
-            };
-            
-            document.getElementById('dslPreview').textContent = JSON.stringify(dsl, null, 2);
-            
-            return dsl;
-        }
+    const hasParams = needsN||needsValue||needsDate;
 
-        // Execute query
-        async function executeQuery() {
-            const dsl = updateDSL();
-            const resultsDiv = document.getElementById('results');
-            
-            if (!dsl.dataset) {
-                resultsDiv.innerHTML = '<div class="error-message">Please select a dataset</div>';
-                return;
-            }
-            
-            resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Executing query...</div>';
-            
-            try {
-                const response = await fetch('/api/aggregate', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(dsl)
-                });
-                
-                const result = await response.json();
-                
-                if (response.ok) {
-                    displayResults(result);
-                } else {
-                    resultsDiv.innerHTML = `<div class="error-message">Error: ${result.error || 'Unknown error'}</div>`;
-                }
-            } catch (error) {
-                console.error('Error executing query:', error);
-                resultsDiv.innerHTML = '<div class="error-message">Error executing query: ' + error.message + '</div>';
-            }
-        }
+    return`<div class="agg-row" data-id="${a.id}" style="border-radius:${hasParams?'var(--radius) var(--radius) 0 0':'var(--radius)'}">
+      <div class="col" style="max-width:30%"><select class="agg-field-select" onchange="onAggChange(${a.id},'field',this.value)">
+        <option value="">-- field --</option>${options}</select></div>
+      <div class="col" style="max-width:28%"><select onchange="onAggChange(${a.id},'op',this.value);renderAggregations();updateDSL();">${opOptions}</select></div>
+      <div class="col"><input type="text" placeholder="alias..." value="${escapeHtml(a.alias)}"
+        oninput="onAggChange(${a.id},'alias',this.value);updateDSL();"></div>
+      <div class="col-auto"><button class="btn btn-red btn-icon" onclick="removeAggregation(${a.id})"><i class="fas fa-times"></i></button></div>
+    </div>
+    ${hasParams?`<div class="agg-params-row" data-id="${a.id}">
+      ${needsN?`<div><label>N (index)</label><input type="number" value="${n}" min="1" max="24" style="width:70px"
+        oninput="onAggParam(${a.id},'n',this.value);updateDSL();"></div>`:''}
+      ${needsValue?`<div><label>Target value</label><input type="number" value="${val}" min="0" max="5" step="1" style="width:70px"
+        oninput="onAggParam(${a.id},'value',this.value);updateDSL();"></div>`:''}
+      ${needsDate?`
+      <div style="flex:1;min-width:120px"><label>date_field (path)</label><input type="text" placeholder="mis. Bulan" value="${escapeHtml(dateField)}"
+        oninput="onAggParam(${a.id},'date_field',this.value);updateDSL();"></div>
+      <div><label>ref_date</label><input type="date" value="${refDate}" style="width:150px"
+        oninput="onAggParam(${a.id},'ref_date',this.value);updateDSL();"></div>
+      <div><label>N</label><input type="number" value="${n}" min="1" style="width:60px"
+        oninput="onAggParam(${a.id},'n',this.value);updateDSL();"></div>
+      <div><label>Unit</label><select style="width:90px" onchange="onAggParam(${a.id},'unit',this.value);updateDSL();">
+        <option value="month"${unit==='month'?' selected':''}>month</option>
+        <option value="day"${unit==='day'?' selected':''}>day</option>
+        <option value="year"${unit==='year'?' selected':''}>year</option>
+      </select></div>`:''}
+    </div>`:''}`;
+  }).join('');
 
-        // Display results
-        function displayResults(data) {
-            const resultsDiv = document.getElementById('results');
-            
-            if (!data || data.length === 0) {
-                resultsDiv.innerHTML = '<p style="color: #666; text-align: center; padding: 40px;">No results found</p>';
-                return;
-            }
-            
-            const columns = Object.keys(data[0]);
-            
-            let html = '<table class="result-table"><thead><tr>';
-            columns.forEach(col => {
-                html += `<th>${col}</th>`;
-            });
-            html += '</tr></thead><tbody>';
-            
-            data.forEach(row => {
-                html += '<tr>';
-                columns.forEach(col => {
-                    let value = row[col];
-                    // Format numbers
-                    if (typeof value === 'number') {
-                        value = Number.isInteger(value) ? value.toLocaleString() : value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                    } else if (value === null || value === undefined) {
-                        value = '<em style="color: #999;">null</em>';
-                    }
-                    html += `<td>${value}</td>`;
-                });
-                html += '</tr>';
-            });
-            
-            html += '</tbody></table>';
-            html += `<div class="success-message">Showing ${data.length} result(s)</div>`;
-            
-            resultsDiv.innerHTML = html;
-        }
+  container.querySelectorAll('.agg-row').forEach(row=>{
+    const id=parseInt(row.dataset.id);const a=aggregations.find(x=>x.id===id);if(!a)return;
+    row.querySelector('.agg-field-select').value=a.field;
+    row.querySelectorAll('select')[1].value=a.op;
+  });
+}
 
-        // Reset form
-        function resetForm() {
-            filters = [];
-            groupByFields = [];
-            aggregations = [];
-            document.getElementById('filters').innerHTML = '';
-            document.getElementById('groupByFields').innerHTML = '';
-            document.getElementById('aggregations').innerHTML = '';
-            document.getElementById('results').innerHTML = '<p style="color: #666; text-align: center; padding: 40px;">Execute a query to see results</p>';
-            updateDSL();
-        }
+function onAggChange(id,key,value){const a=aggregations.find(x=>x.id===id);if(a){a[key]=value;if(key==='op')renderAggregations();updateDSL();}}
+function onAggParam(id,key,value){
+  const a=aggregations.find(x=>x.id===id);if(!a)return;
+  if(!a.params)a.params={};
+  if(key==='n')a.params.n=parseInt(value)||6;
+  else if(key==='value')a.params.value=parseFloat(value)||0;
+  else a.params[key]=value;
+  updateDSL();
+}
 
-        // Load example queries
-        function loadExample(exampleNum) {
-            resetForm();
-            
-            // Ensure schema is loaded
-            if (schema.length === 0) {
-                document.getElementById('dataset').value = 'employees';
-                loadSchema().then(() => loadExample(exampleNum));
-                return;
-            }
-            
-            switch(exampleNum) {
-                case 1:
-                    // Avg outstanding balance per department
-                    addGroupByField('department');
-                    addAggregation({ field: 'credits.outstanding_balance', op: 'avg', alias: 'avg_outstanding_balance' });
-                    break;
-                    
-                case 2:
-                    // Credit cards by city
-                    addFilter({ field: 'credits.product_type', op: '$eq', value: 'credit card' });
-                    addGroupByField('city');
-                    addAggregation({ field: 'credits.initial_limit', op: 'sum', alias: 'total_initial_limit' });
-                    addAggregation({ field: '*', op: 'count', alias: 'credit_count' });
-                    break;
-                    
-                case 3:
-                    // Max delinquency overall
-                    addAggregation({ field: 'credits.delinquency', op: 'max', alias: 'max_delinquency' });
-                    break;
-                    
-                case 4:
-                    // Worst delinquency last 6 months per department
-                    addGroupByField('department');
-                    addAggregation({ 
-                        field: 'credits.last_24_delq_hist', 
-                        op: 'max', 
-                        alias: 'worst_delq_last_6_months',
-                        special: true,
-                        months: 6
-                    });
-                    break;
-                    
-                case 5:
-                    // Max collectability last 3 months
-                    addAggregation({ 
-                        field: 'credits.last_24_coll_hist', 
-                        op: 'max', 
-                        alias: 'max_coll_last_3_months',
-                        special: true,
-                        months: 3
-                    });
-                    break;
-                    
-                case 6:
-                    // Accounts opened in last 3 months
-                    const threeMonthsAgo = new Date();
-                    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-                    const dateStr = threeMonthsAgo.toISOString().split('T')[0];
-                    addFilter({ field: 'credits.open_date', op: '$gte', value: dateStr });
-                    addAggregation({ field: '*', op: 'count', alias: 'new_accounts_count' });
-                    break;
-                    
-                case 7:
-                    // Bad collectability codes
-                    addFilter({ field: 'credits.collectability_code', op: '$in', value: '3,4,5' });
-                    addAggregation({ field: '*', op: 'count', alias: 'bad_credit_count' });
-                    addAggregation({ field: 'credits.outstanding_balance', op: 'sum', alias: 'total_exposure' });
-                    break;
-                    
-                case 8:
-                    // Stats per product type
-                    addGroupByField('credits.product_type');
-                    addAggregation({ field: '*', op: 'count', alias: 'account_count' });
-                    addAggregation({ field: 'credits.outstanding_balance', op: 'avg', alias: 'avg_balance' });
-                    addAggregation({ field: 'credits.delinquency', op: 'max', alias: 'max_delinquency' });
-                    break;
-            }
-            
-            updateDSL();
-            setTimeout(executeQuery, 100);
-        }
-    </script>
+// ===================== DSL Builder =====================
+function buildDSL(){
+  const dsl={dataset:currentDataset};
+
+  if(localFilter.arrayPath&&localFilter.conditions.length>0){
+    const lf={};
+    localFilter.conditions.forEach(c=>{
+      if(!c.field||!c.op)return;
+      if(!lf[c.field])lf[c.field]={};
+      if(c.op==='$notnull')lf[c.field]['$notnull']=true;
+      else if(c.op==='$null')lf[c.field]['$null']=true;
+      else if(c.op==='$in')lf[c.field]['$in']=c.value.split(',').map(v=>{const t=v.trim();const n=parseFloat(t);return isNaN(n)?t:n;});
+      else{const num=parseFloat(c.value);lf[c.field][c.op]=isNaN(num)?c.value:num;}
+    });
+    if(Object.keys(lf).length>0)dsl.localFilter={[localFilter.arrayPath]:lf};
+  }
+
+  const where={};
+  filters.forEach(f=>{
+    if(!f.field||!f.op)return;
+    if(!where[f.field])where[f.field]={};
+    if(f.op==='$notnull')where[f.field]['$notnull']=true;
+    else if(f.op==='$null')where[f.field]['$null']=true;
+    else if(f.op==='$in')where[f.field]['$in']=f.value.split(',').map(v=>{const t=v.trim();const n=parseFloat(t);return isNaN(n)?t:n;});
+    else{const num=parseFloat(f.value);where[f.field][f.op]=isNaN(num)?f.value:num;}
+  });
+  if(Object.keys(where).length>0)dsl.where=where;
+
+  if(groupByFields.length>0)dsl.groupBy=[...groupByFields];
+
+  const aggs=aggregations.filter(a=>a.field&&a.op).map(a=>{
+    const obj={field:a.field,op:a.op};
+    if(a.alias)obj.alias=a.alias;
+    const def=getOpDef(a.op);
+    const p={};
+    if(def.windowN&&a.params?.n)p.n=a.params.n;
+    if(def.needsValue&&a.params?.value!==undefined)p.value=a.params.value;
+    if(def.dateWindow){
+      if(a.params?.date_field)p.date_field=a.params.date_field;
+      if(a.params?.ref_date)p.ref_date=a.params.ref_date;
+      if(a.params?.n)p.n=a.params.n;
+      if(a.params?.unit)p.unit=a.params.unit;
+    }
+    if(Object.keys(p).length>0)obj.params=p;
+    return obj;
+  });
+  if(aggs.length>0)dsl.aggregations=aggs;
+  return dsl;
+}
+
+function updateDSL(){
+  document.getElementById('dslPreview').innerHTML=syntaxHighlight(JSON.stringify(buildDSL(),null,2));
+}
+
+// ===================== Execute =====================
+async function executeQuery(){
+  if(!currentDataset){showToast('Pilih dataset terlebih dahulu','error');return;}
+  const dsl=buildDSL();
+  if(!dsl.aggregations||!dsl.aggregations.length){showToast('Tambahkan minimal satu agregasi','error');return;}
+  switchTab('result',document.querySelectorAll('.tab')[1]);
+  document.getElementById('resultArea').innerHTML='<div style="text-align:center;padding:32px"><span class="spinner"></span> <span style="margin-left:8px;color:var(--fg-muted)">Mengeksekusi...</span></div>';
+  try{
+    const results=await apiPost('/api/aggregate',dsl)||[];
+    if(!Array.isArray(results)||!results.length){
+      document.getElementById('resultArea').innerHTML='<div class="empty-state"><i class="fas fa-inbox"></i>Tidak ada data yang cocok</div>';
+    } else { renderResults(results); }
+    showToast('Query berhasil: '+results.length+' row(s)','success');
+  }catch(e){
+    document.getElementById('resultArea').innerHTML=`<div class="empty-state" style="color:var(--red)"><i class="fas fa-exclamation-triangle"></i>${escapeHtml(e.message)}</div>`;
+    showToast('Query gagal: '+e.message,'error');
+  }
+}
+
+function renderResults(results){
+  if(!Array.isArray(results)||!results.length)return;
+  const keys=Object.keys(results[0]);
+  let html='<div class="result-table-wrap"><table class="result-table"><thead><tr>';
+  keys.forEach(k=>{html+=`<th>${escapeHtml(k)}</th>`;});
+  html+='</tr></thead><tbody>';
+  results.forEach(row=>{
+    html+='<tr>';
+    keys.forEach(k=>{
+      const v=row[k];const isNum=typeof v==='number';const isNull=v===null||v===undefined;
+      let display=isNull?'<span style="color:var(--fg-muted);font-style:italic">null</span>':escapeHtml(formatValue(v));
+      html+=`<td class="${isNum?'num-cell':''} ${isNull?'null-cell':''}">${display}</td>`;
+    });
+    html+='</tr>';
+  });
+  html+='</tbody></table></div>';
+  document.getElementById('resultArea').innerHTML=html;
+}
+
+function formatValue(v){
+  if(typeof v==='number')return Number.isInteger(v)?v.toString():v.toFixed(4).replace(/\.?0+$/,'');
+  return String(v);
+}
+
+// ===================== Presets =====================
+const PRESETS=[
+  {name:'Avg outstanding/dept',lf:{arrayPath:'',conditions:[]},filters:[],gb:['department'],
+    aggs:[{field:'credits.outstanding_balance',op:'avg',alias:'avg_outstanding',params:{}}]},
+  {name:'CC limit/kota',lf:{arrayPath:'credits',conditions:[{id:0,field:'credits.product_type',op:'$eq',value:'credit card'}]},
+    filters:[],gb:['city'],aggs:[{field:'credits.initial_limit',op:'sum',alias:'total_cc_limit',params:{}},{field:'credits.account_no',op:'count',alias:'count_cc',params:{}}]},
+  {name:'Max delinquency',lf:{arrayPath:'',conditions:[]},filters:[],gb:[],
+    aggs:[{field:'credits.delinquency',op:'max',alias:'max_delinquency',params:{}}]},
+  {name:'Worst delq last 6mo',lf:{arrayPath:'',conditions:[]},filters:[],gb:['name'],
+    aggs:[{field:'credits.last_24_delq_hist',op:'worst_last_n',alias:'worst_delq_6mo',params:{n:6}}]},
+  {name:'Max coll last 3mo',lf:{arrayPath:'',conditions:[]},filters:[],gb:['name'],
+    aggs:[{field:'credits.last_24_coll_hist',op:'max_last_n',alias:'max_coll_3mo',params:{n:3}}]},
+  {name:'Ever coll≥3 last 3mo',lf:{arrayPath:'',conditions:[]},filters:[],gb:['name','department'],
+    aggs:[{field:'credits.last_24_coll_hist',op:'ever_has_last_n',alias:'ever_bad_3mo',params:{n:3,value:3}}]},
+  {name:'Active loans/dept',lf:{arrayPath:'credits',conditions:[{id:0,field:'credits.loan_status',op:'$eq',value:'active'}]},
+    filters:[],gb:['department'],aggs:[{field:'credits.outstanding_balance',op:'sum',alias:'active_os',params:{}},{field:'credits.account_no',op:'count',alias:'active_count',params:{}}]},
+];
+
+function loadPreset(i){
+  if(!currentDataset){
+    // Try to load employees sample
+    selectDataset('employees','builtin').then(()=>setTimeout(()=>applyPreset(i),200));
+  } else { applyPreset(i); }
+}
+function applyPreset(i){
+  const p=PRESETS[i];
+  localFilter.arrayPath=p.lf.arrayPath;
+  localFilter.conditions=p.lf.conditions.map(c=>({...c,id:lfIdCounter++}));
+  document.getElementById('lfArraySelect').value=p.lf.arrayPath;
+  renderLocalFilterConditions();
+  filters=p.filters.map(f=>({...f,id:filterIdCounter++}));
+  if(!filters.length)filters.push({id:filterIdCounter++,field:'',op:'$eq',value:''});
+  renderFilters();
+  groupByFields=[...p.gb];renderGroupByChips();
+  aggregations=p.aggs.map(a=>({...a,id:aggIdCounter++,params:a.params||{}}));
+  if(!aggregations.length)aggregations.push({id:aggIdCounter++,field:'',op:'sum',alias:'',params:{}});
+  renderAggregations();updateDSL();
+  showToast('Preset: '+p.name,'info');
+}
+
+// ===================== Tabs =====================
+function switchTab(tab,btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('dslPanel').style.display=tab==='dsl'?'block':'none';
+  document.getElementById('resultPanel').style.display=tab==='result'?'block':'none';
+}
+
+// ===================== Syntax Highlight =====================
+function syntaxHighlight(json){
+  if(!json)return'';
+  json=escapeHtml(json);
+  return json.replace(/("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(\.\d+)?([eE][+-]?\d+)?)/g,function(match){
+    let cls='num';
+    if(/^"/.test(match)){if(/:$/.test(match)){cls='key';return`<span class="${cls}">${match.slice(0,-1)}</span>:`;}else cls='str';}
+    return`<span class="${cls}">${match}</span>`;
+  });
+}
+
+// ===================== Utilities =====================
+function escapeHtml(s){return typeof s!=='string'?String(s):s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function showToast(msg,type){
+  const c=document.getElementById('toastContainer');
+  const t=document.createElement('div');
+  t.className='toast toast-'+(type||'info');
+  const icon=type==='success'?'check-circle':type==='error'?'exclamation-circle':'info-circle';
+  t.innerHTML=`<i class="fas fa-${icon}"></i> ${escapeHtml(msg)}`;
+  c.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity 0.3s';setTimeout(()=>t.remove(),300);},3500);
+}
+</script>
 </body>
 </html>

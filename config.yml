@@ -1,0 +1,26 @@
+# Visual Aggregator — server configuration
+# All fields are optional; missing keys fall back to the built-in defaults.
+
+# TCP port the server listens on.
+port: 8888
+
+# Directory served as the web root (contains index.html, etc.).
+static_dir: static
+
+# Set to true to register the built-in employee+credits sample dataset.
+enable_samples: true
+
+# Set to true to log every HTTP request with method, path, and latency.
+log_requests: false
+
+# File-backed datasets to pre-load at startup.
+# Each entry requires a "name" (API identifier) and a "file" (path to JSON).
+# The JSON file may be an array of objects or a single object (auto-wrapped).
+#
+# Example:
+# datasets:
+#   - name: pefindo
+#     file: data/pefindo.json
+#   - name: credit
+#     file: data/credit.json
+datasets:
