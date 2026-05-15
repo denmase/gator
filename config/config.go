@@ -24,9 +24,12 @@ import (
 type DatasetEntry struct {
 	// Name is the identifier used in the API (e.g. "employees").
 	Name string
-	// File is the path to a JSON file to load.  If empty the dataset is not
-	// file-backed (it may be registered programmatically, e.g. built-in samples).
+	// File is the path to a JSON or XML file to load.
 	File string
+	// XSDFile is the optional path to an XSD file for XML datasets.
+	// When provided, type and cardinality hints are extracted and applied
+	// during XML parsing — improving coercion accuracy and force-array detection.
+	XSDFile string
 }
 
 // Config holds the full server configuration.
@@ -173,5 +176,7 @@ func setDatasetField(e *DatasetEntry, key, val string) {
 		e.Name = val
 	case "file":
 		e.File = val
+	case "xsd_file":
+		e.XSDFile = val
 	}
 }

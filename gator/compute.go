@@ -145,6 +145,16 @@ func worstInLastN(arr []interface{}, n int) *float64 {
 	return &best
 }
 
+// floatEq reports whether two float64 values are equal within a small epsilon.
+// This avoids false negatives from floating-point representation errors when
+// comparing collectability codes, delinquency buckets, or other values that
+// are logically integers but may be stored as float64.
+const floatEps = 1e-9
+
+func floatEq(a, b float64) bool {
+	return math.Abs(a-b) < floatEps
+}
+
 // everHasInLastN returns true if any of the last n elements of arr equals targetVal.
 func everHasInLastN(arr []interface{}, n int, targetVal float64) bool {
 	if len(arr) == 0 {
@@ -155,7 +165,7 @@ func everHasInLastN(arr []interface{}, n int, targetVal float64) bool {
 		start = 0
 	}
 	for i := start; i < len(arr); i++ {
-		if f, ok := ToFloat64(arr[i]); ok && f == targetVal {
+		if f, ok := ToFloat64(arr[i]); ok && floatEq(f, targetVal) {
 			return true
 		}
 	}
@@ -180,7 +190,72 @@ func sumLastN(arr []interface{}, n int) float64 {
 	return total
 }
 
-// ===================== ComputeAggregation =====================
+// minInLastN returns the minimum numeric value in the last n elements of arr.
+func minInLastN(arr []interface{}, n int) *float64 {
+	if len(arr) == 0 {
+		return nil
+	}
+	start := len(arr) - n
+	if start < 0 {
+		start = 0
+	}
+	best := math.MaxFloat64
+	found := false
+	for i := start; i < len(arr); i++ {
+		if f, ok := ToFloat64(arr[i]); ok {
+			if !found || f < best {
+				best = f
+				found = true
+			}
+		}
+	}
+	if !found {
+		return nil
+	}
+	return &best
+}
+
+// everHasInLastNWithCmp checks whether any of the last n elements of arr
+// satisfies comparator op against targetVal.
+func everHasInLastNWithCmp(arr []interface{}, n int, targetVal float64, op string) bool {
+	if len(arr) == 0 {
+		return false
+	}
+	start := len(arr) - n
+	if start < 0 {
+		start = 0
+	}
+	for i := start; i < len(arr); i++ {
+		if f, ok := ToFloat64(arr[i]); ok && compareWithOp(f, targetVal, op) {
+			return true
+		}
+	}
+	return false
+}
+//
+// When avg is computed over an array (per-record pass), we cannot reduce to a
+// scalar yet — we need to carry (sum, count) so the cross-record combine phase
+// can produce a correct weighted average instead of a mean-of-means.
+//
+// avgAccum is used only internally within ComputeAggregation and CrossRecordOp.
+// It is never returned as a final aggregation result — the last call to
+// ComputeAggregation("avg",...) on a slice of avgAccums collapses them to float64.
+type avgAccum struct {
+	Sum   float64
+	Count int
+}
+
+// toAvgAccum coerces a value to avgAccum.
+// Accepts: avgAccum (pass-through), float64 (treat as sum=v, count=1).
+func toAvgAccum(v interface{}) (avgAccum, bool) {
+	switch val := v.(type) {
+	case avgAccum:
+		return val, true
+	case float64:
+		return avgAccum{Sum: val, Count: 1}, true
+	}
+	return avgAccum{}, false
+}
 //
 // Supported operators:
 //
@@ -210,11 +285,25 @@ func ComputeAggregation(values []interface{}, op string, params map[string]inter
 	// ── Scalar ops ──────────────────────────────────────────────────────────
 
 	case "count":
+		// SQL COUNT(field) — exclude nil values.
+		c := 0
+		for _, v := range values {
+			if v != nil {
+				c++
+			}
+		}
+		return float64(c)
+
+	case "count_rows":
+		// SQL COUNT(*) — count all rows including nil.
 		return float64(len(values))
 
 	case "count_distinct":
 		seen := map[string]bool{}
 		for _, v := range values {
+			if v == nil {
+				continue
+			}
 			seen[fmt.Sprintf("%v", v)] = true
 		}
 		return float64(len(seen))
@@ -232,17 +321,45 @@ func ComputeAggregation(values []interface{}, op string, params map[string]inter
 		if len(values) == 0 {
 			return nil
 		}
-		total, count := 0.0, 0
+		// Two modes:
+		// A) values are raw numerics (first pass over array elements or parent records)
+		//    → accumulate sum+count, return avgAccum for cross-record combining.
+		// B) values are avgAccum carriers (cross-record combine pass after CrossRecordOp)
+		//    → merge all accumulators, return final float64.
+		//
+		// We detect mode B if the first non-nil value is an avgAccum.
+		// This ensures weighted averaging: (sum1+sum2+...) / (count1+count2+...).
+		var totalSum float64
+		var totalCount int
 		for _, v := range values {
-			if f, ok := ToFloat64(v); ok {
-				total += f
-				count++
+			if acc, ok := toAvgAccum(v); ok {
+				totalSum += acc.Sum
+				totalCount += acc.Count
+			} else if f, ok2 := ToFloat64(v); ok2 {
+				totalSum += f
+				totalCount++
 			}
 		}
-		if count == 0 {
+		if totalCount == 0 {
 			return nil
 		}
-		return total / float64(count)
+		// If all inputs were raw numerics (not avgAccum), we are in the "leaf"
+		// call: return an avgAccum so callers can weight-combine further.
+		// If any input was already an avgAccum, we are in the final combine phase:
+		// return the collapsed float64.
+		allRaw := true
+		for _, v := range values {
+			if _, isAcc := v.(avgAccum); isAcc {
+				allRaw = false
+				break
+			}
+		}
+		if allRaw {
+			// Leaf pass: return accumulator for upstream combining.
+			return avgAccum{Sum: totalSum, Count: totalCount}
+		}
+		// Final combine pass: collapse to float64.
+		return totalSum / float64(totalCount)
 
 	case "min":
 		if len(values) == 0 {
@@ -302,33 +419,79 @@ func ComputeAggregation(values []interface{}, op string, params map[string]inter
 		return best
 
 	case "ever_has_last_n":
+		// params["comparator"]: "$eq"(default),"$gte","$gt","$lte","$lt"
 		n := lastN(params)
 		target := getParamFloat(params, "value")
+		cmp := getParamString(params, "comparator")
+		if cmp == "" {
+			cmp = "$eq"
+		}
 		for _, v := range values {
 			if arr, ok := v.([]interface{}); ok {
-				if everHasInLastN(arr, n, target) {
+				if everHasInLastNWithCmp(arr, n, target, cmp) {
 					return 1.0
 				}
-			} else if f, ok := ToFloat64(v); ok && f == target {
+			} else if f, ok := ToFloat64(v); ok && compareWithOp(f, target, cmp) {
 				return 1.0
 			}
 		}
 		return 0.0
 
 	case "count_last_n":
+		// params["comparator"]: "$eq"(default),"$gte","$gt","$lte","$lt"
 		n := lastN(params)
 		target := getParamFloat(params, "value")
+		cmp := getParamString(params, "comparator")
+		if cmp == "" {
+			cmp = "$eq"
+		}
 		count := 0
 		for _, v := range values {
 			if arr, ok := v.([]interface{}); ok {
-				if everHasInLastN(arr, n, target) {
+				if everHasInLastNWithCmp(arr, n, target, cmp) {
 					count++
 				}
-			} else if f, ok := ToFloat64(v); ok && f == target {
+			} else if f, ok := ToFloat64(v); ok && compareWithOp(f, target, cmp) {
 				count++
 			}
 		}
 		return float64(count)
+
+	case "min_last_n":
+		// Min value across last n positions of each element's array.
+		n := lastN(params)
+		best := math.MaxFloat64
+		found := false
+		for _, v := range values {
+			if arr, ok := v.([]interface{}); ok {
+				if m := minInLastN(arr, n); m != nil && (!found || *m < best) {
+					best = *m
+					found = true
+				}
+			} else if f, ok := ToFloat64(v); ok && (!found || f < best) {
+				best = f
+				found = true
+			}
+		}
+		if !found {
+			return nil
+		}
+		return best
+
+	case "count_since":
+		// Alias for count_date_last_n using months — params["n"] = months.
+		// count_since counts ISO date strings >= now - N months.
+		n := lastN(params)
+		threshold := time.Now().AddDate(0, -n, 0).Format("2006-01-02")
+		total := 0.0
+		for _, v := range values {
+			if s, ok := v.(string); ok && s >= threshold {
+				total++
+			} else if f, ok := ToFloat64(v); ok {
+				total += f
+			}
+		}
+		return total
 
 	case "sum_last_n":
 		n := lastN(params)
@@ -386,24 +549,20 @@ func ComputeAggregation(values []interface{}, op string, params map[string]inter
 // that a single positive record makes the whole group positive.
 func CrossRecordOp(op string) string {
 	switch op {
-	case "sum", "count", "count_distinct", "count_last_n", "sum_last_n", "count_date_last_n":
+	case "sum", "count", "count_rows", "count_distinct", "count_last_n",
+		"sum_last_n", "count_date_last_n", "count_since":
 		return "sum"
 	case "ever_has_last_n":
 		return "max"
 	default:
-		// max, min, avg, worst_last_n, max_last_n → re-apply same op
 		return op
 	}
 }
 
-// ===================== Zero values for empty-array ops =====================
-
-// zeroForOp returns true and 0.0 when an op should return a zero value for an
-// empty array (rather than nil / "undefined").
 func zeroForOp(op string) (interface{}, bool) {
 	switch op {
-	case "sum", "count", "count_distinct", "ever_has_last_n",
-		"count_last_n", "sum_last_n", "count_date_last_n":
+	case "sum", "count", "count_rows", "count_distinct", "ever_has_last_n",
+		"count_last_n", "sum_last_n", "count_date_last_n", "count_since", "min_last_n":
 		return 0.0, true
 	default:
 		return nil, false

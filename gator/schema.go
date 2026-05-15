@@ -21,7 +21,33 @@ type FieldInfo struct {
 	ArrayPath string `json:"arrayPath,omitempty"`
 }
 
-// DetectSchema inspects the first record of a dataset and returns a flat list
+// DetectSchemaFromSample scans up to maxSchemaSample records and returns the
+// schema of the first record that contains at least one non-empty array_object.
+// This avoids the bug where data[0] has an empty array (e.g. credits:[]) and
+// the engine misclassifies all array-level fields as parent-level.
+//
+// Falls back to DetectSchema(data[0]) if no record with a non-empty array_object
+// is found within the sample window, or if data is empty.
+const maxSchemaSample = 10
+
+func DetectSchemaFromSample(data []interface{}) []FieldInfo {
+	if len(data) == 0 {
+		return nil
+	}
+	for i, rec := range data {
+		if i >= maxSchemaSample {
+			break
+		}
+		schema := DetectSchema(rec, "", "")
+		for _, fi := range schema {
+			if fi.Type == "array_object" {
+				return schema // found a record with non-empty object array
+			}
+		}
+	}
+	// Fallback: use first record
+	return DetectSchema(data[0], "", "")
+}
 // of FieldInfo entries, one per leaf or array node.  It recurses into nested
 // objects and marks fields inside arrays with their ancestor ArrayPath so the
 // engine can decide whether to apply parent-level or array-level aggregation.

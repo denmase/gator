@@ -204,3 +204,56 @@ func TestMergeXSDHints(t *testing.T) {
 	}
 	t.Log("✓ MergeXSDHints correct")
 }
+
+// ── QUIRK-12: StripRootPrefix ─────────────────────────────────────────────────
+
+func TestStripRootPrefix(t *testing.T) {
+	h := ingest.XSDHints{
+		StringPaths: map[string]bool{
+			"Response.Product.TradeLine.ZipCode":      true,
+			"Response.Product.TradeLine.AccountNumber": true,
+			"SingleSegment": true, // no dot — should be dropped
+		},
+		ArrayPaths: map[string]bool{
+			"Response.Product.TradeLines.TradeLine": true,
+			"Response.Product.Scores.Score":         true,
+			"RootOnly": true, // no dot — dropped
+		},
+	}
+
+	stripped := ingest.StripRootPrefix(h)
+
+	// Paths with root prefix stripped
+	if !stripped.StringPaths["Product.TradeLine.ZipCode"] {
+		t.Error("✗ ZipCode path not stripped correctly")
+	} else {
+		t.Log("✓ Product.TradeLine.ZipCode present")
+	}
+	if !stripped.ArrayPaths["Product.TradeLines.TradeLine"] {
+		t.Error("✗ TradeLine array path not stripped")
+	} else {
+		t.Log("✓ Product.TradeLines.TradeLine present")
+	}
+
+	// Original (with root) must NOT be present
+	if stripped.StringPaths["Response.Product.TradeLine.ZipCode"] {
+		t.Error("✗ original Response.* path should be gone")
+	} else {
+		t.Log("✓ Response.* path correctly removed")
+	}
+
+	// Single-segment paths must be dropped
+	if stripped.StringPaths["SingleSegment"] {
+		t.Error("✗ single-segment StringPath should be dropped")
+	} else {
+		t.Log("✓ single-segment StringPath dropped")
+	}
+	if stripped.ArrayPaths["RootOnly"] {
+		t.Error("✗ single-segment ArrayPath should be dropped")
+	} else {
+		t.Log("✓ single-segment ArrayPath dropped")
+	}
+
+	t.Logf("StringPaths after strip: %v", stripped.StringPaths)
+	t.Logf("ArrayPaths after strip: %v", stripped.ArrayPaths)
+}

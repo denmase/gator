@@ -170,7 +170,41 @@ func attrVal(attrs []xml.Attr, name string) string {
 	return ""
 }
 
-// MergeXSDHints returns a new XSDHints merging a and b (b takes precedence
+// StripRootPrefix removes the first dot-separated segment from every path in
+// hints.  This normalises XSD paths (which include the root element name, e.g.
+// "Response.Product.TradeLine") to match the schema paths produced by
+// DetectSchemaFromSample after ParseXML has unwrapped the root element (e.g.
+// "Product.TradeLine").
+//
+// If a path has only one segment (no dot), it is dropped — it referred to the
+// root element itself, which is not meaningful after unwrapping.
+func StripRootPrefix(h XSDHints) XSDHints {
+	out := XSDHints{
+		StringPaths: make(map[string]bool, len(h.StringPaths)),
+		ArrayPaths:  make(map[string]bool, len(h.ArrayPaths)),
+	}
+	for p, v := range h.StringPaths {
+		if stripped, ok := dropFirstSegment(p); ok {
+			out.StringPaths[stripped] = v
+		}
+	}
+	for p, v := range h.ArrayPaths {
+		if stripped, ok := dropFirstSegment(p); ok {
+			out.ArrayPaths[stripped] = v
+		}
+	}
+	return out
+}
+
+// dropFirstSegment removes the first "segment." prefix from a dot-notation path.
+// Returns ("", false) if the path has no dot (single segment).
+func dropFirstSegment(path string) (string, bool) {
+	idx := strings.Index(path, ".")
+	if idx < 0 {
+		return "", false
+	}
+	return path[idx+1:], true
+}
 // on conflicts). Useful for combining parsed hints with manual overrides.
 func MergeXSDHints(a, b XSDHints) XSDHints {
 	out := XSDHints{

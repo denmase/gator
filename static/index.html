@@ -1,904 +1,721 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Visual Aggregator</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root {
-  --bg:#0b0e14; --bg2:#111620; --bg3:#181e2a; --bg4:#1f2737;
-  --border:#2a3344; --border-focus:#e8a040;
-  --fg:#e2e8f0; --fg-dim:#8899aa; --fg-muted:#556677;
-  --accent:#e8a040; --accent2:#f0c060; --accent-bg:rgba(232,160,64,0.08);
-  --green:#4ade80; --green-bg:rgba(74,222,128,0.08);
-  --red:#f87171; --red-bg:rgba(248,113,113,0.08);
-  --blue:#60a5fa; --blue-bg:rgba(96,165,250,0.08);
-  --orange:#fb923c; --orange-bg:rgba(251,146,60,0.08);
-  --purple:#a78bfa; --purple-bg:rgba(167,139,250,0.08);
-  --teal:#2dd4bf; --teal-bg:rgba(45,212,191,0.08);
-  --radius:8px; --radius-lg:12px;
-  --font-ui:'Plus Jakarta Sans',sans-serif;
-  --font-mono:'JetBrains Mono',monospace;
+:root{
+  --bg:#f4f6f9;--surface:#fff;--surface2:#f0f3f7;--surface3:#e6eaf0;
+  --border:#d8dde6;--border-light:#eaecf0;
+  --text:#1a202c;--muted:#64748b;--muted2:#94a3b8;
+  --accent:#2563eb;--accent2:#7c3aed;
+  --accent-soft:#eff6ff;--accent-mid:#bfdbfe;
+  --green:#059669;--green-soft:#ecfdf5;--green-mid:#a7f3d0;
+  --red:#dc2626;--red-soft:#fef2f2;--red-mid:#fecaca;
+  --orange:#d97706;--orange-soft:#fffbeb;--orange-mid:#fde68a;
+  --purple:#7c3aed;--purple-soft:#f5f3ff;--purple-mid:#ddd6fe;
+  --teal:#0d9488;--teal-soft:#f0fdfa;--teal-mid:#99f6e4;
+  --radius:10px;--radius-sm:7px;--radius-xs:5px;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --mono:'IBM Plex Mono',monospace;
+}
+[data-theme="dark"]{
+  --bg:#0d1117;--surface:#161b22;--surface2:#1c2333;--surface3:#243047;
+  --border:#30363d;--border-light:#21262d;
+  --text:#e6edf3;--muted:#8b949e;--muted2:#484f58;
+  --accent:#58a6ff;--accent2:#bc8cff;
+  --accent-soft:#0d2044;--accent-mid:#1b3d7a;
+  --green:#3fb950;--green-soft:#0a2218;--green-mid:#1a4030;
+  --red:#f85149;--red-soft:#2a0f0f;--red-mid:#5c1a1a;
+  --orange:#e3b341;--orange-soft:#221a00;--orange-mid:#4a3800;
+  --purple:#bc8cff;--purple-soft:#1a0f2e;--purple-mid:#3b1f6d;
+  --teal:#2dd4bf;--teal-soft:#012826;--teal-mid:#024b44;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{font-size:14px}
-body{font-family:var(--font-ui);background:var(--bg);color:var(--fg);min-height:100vh;line-height:1.5}
-body::before{content:'';position:fixed;top:-200px;left:-200px;width:600px;height:600px;
-  background:radial-gradient(circle,rgba(232,160,64,0.04) 0%,transparent 70%);pointer-events:none;z-index:0}
-body::after{content:'';position:fixed;bottom:-300px;right:-200px;width:800px;height:800px;
-  background:radial-gradient(circle,rgba(96,165,250,0.03) 0%,transparent 70%);pointer-events:none;z-index:0}
-::-webkit-scrollbar{width:6px;height:6px}
+body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5;-webkit-font-smoothing:antialiased;transition:background .2s,color .2s}
+::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-::-webkit-scrollbar-thumb:hover{background:var(--fg-muted)}
+.container{max-width:1520px;margin:0 auto;padding:20px 24px 56px}
 
-.app-container{position:relative;z-index:1;max-width:1440px;margin:0 auto;padding:20px 24px 40px}
+/* ── Topbar ── */
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border-light)}
+.tb-left{display:flex;align-items:center;gap:12px}
+.logo{width:38px;height:38px;background:linear-gradient(135deg,#2563eb,#7c3aed);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 10px rgba(37,99,235,.3)}
+.logo svg{width:20px;height:20px;fill:white}
+.tb-title h1{font-size:1.18rem;font-weight:700;letter-spacing:-.025em}
+.tb-title h1 span{color:var(--accent)}
+.tb-title p{font-size:.64rem;color:var(--muted);margin-top:1px;font-weight:500;font-family:var(--mono)}
+.tb-right{display:flex;align-items:center;gap:8px}
+.theme-lbl{font-size:.68rem;color:var(--muted);font-weight:600}
+.theme-sw{width:42px;height:23px;background:var(--surface3);border:1.5px solid var(--border);border-radius:12px;cursor:pointer;position:relative;transition:all .2s}
+.theme-sw::after{content:'';position:absolute;top:2px;left:2px;width:15px;height:15px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:50%;transition:transform .2s}
+[data-theme="dark"] .theme-sw::after{transform:translateX(19px)}
 
-.app-header{display:flex;align-items:center;gap:14px;margin-bottom:24px;padding-bottom:18px;border-bottom:1px solid var(--border)}
-.app-header .logo{width:38px;height:38px;background:linear-gradient(135deg,var(--accent),#d4802a);
-  border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;color:#0b0e14;font-weight:800;flex-shrink:0}
-.app-header h1{font-size:1.4rem;font-weight:700;letter-spacing:-0.02em}
-.app-header h1 span{color:var(--accent)}
-.app-header .subtitle{font-size:0.78rem;color:var(--fg-muted);margin-left:auto}
+/* ── Card ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;box-shadow:var(--shadow);overflow:hidden;transition:background .2s,border-color .2s}
+.card-hdr{display:flex;align-items:center;gap:8px;padding:9px 15px;border-bottom:1px solid var(--border-light)}
+.hdr-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.hdr-lbl{font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.hdr-hint{font-size:.59rem;color:var(--muted2);margin-left:auto;font-weight:500}
+.hdr-badge{display:inline-flex;padding:1px 7px;border-radius:8px;font-size:.54rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-left:5px}
+.card-body{padding:13px 15px}
+.c-blue .hdr-dot{background:var(--accent)}.c-blue{background:var(--accent-soft)}
+.c-green .hdr-dot{background:var(--green)}.c-green{background:var(--green-soft)}
+.c-purple .hdr-dot{background:var(--purple)}.c-purple{background:var(--purple-soft)}
+.c-orange .hdr-dot{background:var(--orange)}.c-orange{background:var(--orange-soft)}
+.c-teal .hdr-dot{background:var(--teal)}.c-teal{background:var(--teal-soft)}
+.c-indigo .hdr-dot{background:var(--accent2)}.c-indigo{background:var(--purple-soft)}
+.bdg-purple{background:var(--purple-mid);color:var(--purple)}
+.bdg-blue{background:var(--accent-mid);color:var(--accent)}
 
-.main-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-@media(max-width:1024px){.main-grid{grid-template-columns:1fr}}
-.full-width{grid-column:1/-1}
+/* ── Layout ── */
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+.grid2>:nth-child(2){position:sticky;top:20px;max-height:calc(100vh - 40px);overflow-y:auto}
+@media(max-width:960px){.grid2{grid-template-columns:1fr}.grid2>:nth-child(2){position:static;max-height:none}}
+.ds-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+@media(max-width:640px){.ds-grid{grid-template-columns:1fr}}
 
-.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
-.card-header{display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--bg3);
-  border-bottom:1px solid var(--border);font-weight:600;font-size:0.85rem;text-transform:uppercase;
-  letter-spacing:0.04em;color:var(--fg-dim)}
-.card-header i{font-size:0.8rem}
-.card-header .header-desc{font-weight:400;font-size:0.72rem;color:var(--fg-muted);text-transform:none;letter-spacing:0;margin-left:auto}
-.card-body{padding:16px}
+/* ── Form ── */
+label{display:block;font-size:.63rem;color:var(--muted);margin-bottom:3px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+select,input[type=text],input[type=number]{width:100%;padding:7px 10px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-xs);color:var(--text);font-size:.76rem;font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s}
+select:focus,input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.row{display:flex;gap:7px;align-items:flex-end;flex-wrap:wrap}
+.row>*{flex:1;min-width:65px}
 
-label{display:block;font-size:0.75rem;font-weight:600;color:var(--fg-dim);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:5px}
-select,input[type="text"],input[type="number"],input[type="date"]{
-  width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);
-  border-radius:var(--radius);color:var(--fg);font-family:var(--font-ui);font-size:0.85rem;
-  transition:border-color 0.15s,box-shadow 0.15s;outline:none}
-select:focus,input:focus{border-color:var(--border-focus);box-shadow:0 0 0 2px rgba(232,160,64,0.15)}
-select{cursor:pointer}
+/* ── Dropzone ── */
+.dropzone{position:relative;border:1.5px dashed var(--border);border-radius:var(--radius-sm);padding:13px 15px;display:flex;align-items:center;gap:11px;cursor:pointer;transition:all .2s;background:var(--surface2)}
+.dropzone:hover,.dropzone.drag{border-color:var(--accent);background:var(--accent-soft)}
+.dropzone.has-file{border-style:solid;border-color:var(--green);background:var(--green-soft)}
+.dropzone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;z-index:1}
+.dz-icon{width:34px;height:34px;border-radius:8px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--accent);transition:all .2s}
+.dropzone.has-file .dz-icon{background:var(--green-mid);color:var(--green)}
+.dz-icon svg{width:17px;height:17px}
+.dz-title{font-size:.73rem;font-weight:600;color:var(--text)}
+.dz-sub{font-size:.61rem;color:var(--muted);margin-top:2px}
 
-.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--border);
-  border-radius:var(--radius);background:var(--bg3);color:var(--fg);font-family:var(--font-ui);
-  font-size:0.8rem;font-weight:500;cursor:pointer;transition:all 0.15s;white-space:nowrap}
-.btn:hover{background:var(--bg4);border-color:var(--fg-muted)}
-.btn-accent{background:linear-gradient(135deg,var(--accent),#d4802a);color:#0b0e14;border-color:var(--accent);font-weight:700}
-.btn-accent:hover{filter:brightness(1.1);background:linear-gradient(135deg,var(--accent2),var(--accent))}
-.btn-green{border-color:var(--green);color:var(--green)}.btn-green:hover{background:var(--green-bg)}
-.btn-red{border-color:var(--red);color:var(--red);font-size:0.75rem;padding:5px 8px}.btn-red:hover{background:var(--red-bg)}
-.btn-blue{border-color:var(--blue);color:var(--blue)}.btn-blue:hover{background:var(--blue-bg)}
-.btn-orange{border-color:var(--orange);color:var(--orange)}.btn-orange:hover{background:var(--orange-bg)}
-.btn-purple{border-color:var(--purple);color:var(--purple)}.btn-purple:hover{background:var(--purple-bg)}
-.btn-teal{border-color:var(--teal);color:var(--teal)}.btn-teal:hover{background:var(--teal-bg)}
-.btn-sm{padding:5px 10px;font-size:0.75rem}.btn-icon{padding:5px 8px}
-
-.row{display:flex;gap:10px;align-items:flex-end}.row+.row{margin-top:10px}
-.col{flex:1;min-width:0}.col-auto{flex:0 0 auto}
-
-.filter-row,.agg-row{display:flex;gap:8px;align-items:flex-end;padding:10px 12px;
-  background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;transition:border-color 0.15s}
-.filter-row:hover,.agg-row:hover{border-color:var(--fg-muted)}
-.local-filter-row{display:flex;gap:8px;align-items:flex-end;padding:10px 12px;
-  background:var(--bg);border:1px solid rgba(251,146,60,0.2);border-radius:var(--radius);margin-bottom:8px;transition:border-color 0.15s}
-.local-filter-row:hover{border-color:rgba(251,146,60,0.5)}
-
-.gb-container{display:flex;flex-wrap:wrap;gap:6px;min-height:36px;padding:8px;
-  background:var(--bg);border:1px solid var(--border);border-radius:var(--radius)}
-.gb-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;
-  background:var(--accent-bg);border:1px solid rgba(232,160,64,0.25);border-radius:20px;font-size:0.78rem;color:var(--accent2);font-weight:500}
-.gb-chip button{background:none;border:none;color:var(--accent);cursor:pointer;font-size:0.7rem;padding:0;opacity:0.7;transition:opacity 0.15s}
-.gb-chip button:hover{opacity:1}
-
-.code-block{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);
-  padding:14px;font-family:var(--font-mono);font-size:0.78rem;line-height:1.6;
-  color:var(--fg-dim);overflow-x:auto;max-height:300px;overflow-y:auto;white-space:pre-wrap;word-break:break-word}
-.code-block .key{color:var(--blue)}.code-block .str{color:var(--green)}.code-block .num{color:var(--accent)}
-
-.result-table-wrap{overflow-x:auto;max-height:400px;overflow-y:auto}
-.result-table{width:100%;border-collapse:collapse;font-size:0.8rem}
-.result-table th{position:sticky;top:0;background:var(--bg3);padding:8px 12px;text-align:left;
-  font-weight:600;color:var(--accent);border-bottom:2px solid var(--border);white-space:nowrap;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.03em}
-.result-table td{padding:7px 12px;border-bottom:1px solid var(--border);color:var(--fg);font-family:var(--font-mono);font-size:0.78rem}
-.result-table tr:hover td{background:var(--accent-bg)}
-.result-table td.num-cell{text-align:right;color:var(--accent2)}
-.result-table td.null-cell{color:var(--fg-muted);font-style:italic}
-
-.data-viewer{max-height:400px;overflow-y:auto}
-
-.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:12px}
-.tab{padding:8px 16px;font-size:0.8rem;font-weight:500;color:var(--fg-muted);cursor:pointer;
-  border-bottom:2px solid transparent;transition:all 0.15s;background:none;border-top:none;border-left:none;border-right:none;font-family:var(--font-ui)}
-.tab:hover{color:var(--fg-dim)}.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
-
-.toast-container{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
-.toast{padding:10px 16px;border-radius:var(--radius);font-size:0.82rem;font-weight:500;
-  animation:slideIn 0.25s ease-out;max-width:380px;box-shadow:0 8px 24px rgba(0,0,0,0.4)}
-.toast-success{background:#1a3a2a;border:1px solid var(--green);color:var(--green)}
-.toast-error{background:#3a1a1a;border:1px solid var(--red);color:var(--red)}
-.toast-info{background:#1a2a3a;border:1px solid var(--blue);color:var(--blue)}
-@keyframes slideIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
-
-.empty-state{text-align:center;padding:32px 16px;color:var(--fg-muted);font-size:0.85rem}
-.empty-state i{font-size:2rem;margin-bottom:10px;display:block;opacity:0.4}
-.spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--border);
-  border-top-color:var(--accent);border-radius:50%;animation:spin 0.6s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-.section{margin-bottom:16px}
-.params-hint{font-size:0.7rem;color:var(--fg-muted);font-style:italic;margin-top:3px}
-
-.presets-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
-.preset-btn{padding:5px 10px;font-size:0.72rem;border-radius:20px;background:var(--bg4);
-  border:1px solid var(--border);color:var(--fg-dim);cursor:pointer;transition:all 0.15s;font-family:var(--font-ui);font-weight:500}
-.preset-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}
-
-.local-card{border-color:rgba(251,146,60,0.25)}
-.local-card .card-header{background:rgba(251,146,60,0.06)}
-.local-card .card-header i{color:var(--orange)}
-
-/* ── Format badge ── */
-.fmt-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;
-  font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;flex-shrink:0}
-.fmt-json{background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);color:var(--blue)}
-.fmt-xml{background:rgba(251,146,60,0.15);border:1px solid rgba(251,146,60,0.3);color:var(--orange)}
-.fmt-builtin{background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.25);color:var(--green)}
-
-/* ── XSD badge ── */
-.xsd-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:10px;
-  font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;
-  background:rgba(167,139,250,0.15);border:1px solid rgba(167,139,250,0.3);color:var(--purple);cursor:pointer}
-.xsd-badge:hover{background:rgba(167,139,250,0.25)}
-
-/* ── Upload zone ── */
-.upload-zone{border:2px dashed var(--border);border-radius:var(--radius-lg);padding:20px;
-  text-align:center;cursor:pointer;transition:all 0.2s;position:relative}
-.upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:var(--accent-bg)}
-.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-.upload-zone .upload-icon{font-size:1.8rem;margin-bottom:8px;color:var(--fg-muted)}
-.upload-zone .upload-text{font-size:0.82rem;color:var(--fg-muted)}
-.upload-zone .upload-sub{font-size:0.72rem;color:var(--fg-muted);margin-top:4px;opacity:0.6}
+/* ── Format notes ── */
+.fmt-notes{margin-top:7px;display:flex;flex-direction:column;gap:3px}
+.fmt-note{font-size:.62rem;color:var(--muted);display:flex;align-items:flex-start;gap:5px;line-height:1.4}
+.fmt-pill{display:inline-flex;padding:1px 6px;border-radius:3px;font-size:.56rem;font-weight:700;letter-spacing:.04em;flex-shrink:0;margin-top:1px}
+.json-pill{background:var(--accent-soft);color:var(--accent)}
+.xml-pill{background:var(--orange-soft);color:var(--orange)}
 
 /* ── Dataset list ── */
-.dataset-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--radius);
-  cursor:pointer;transition:background 0.12s;border:1px solid transparent}
-.dataset-item:hover{background:var(--bg3);border-color:var(--border)}
-.dataset-item.active{background:var(--accent-bg);border-color:rgba(232,160,64,0.3)}
-.dataset-item .ds-name{flex:1;font-size:0.82rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dataset-item .ds-actions{display:flex;gap:4px;opacity:0;transition:opacity 0.15s;flex-shrink:0}
-.dataset-item:hover .ds-actions{opacity:1}
+.ds-list{max-height:190px;overflow-y:auto;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:4px}
+.ds-item{display:flex;align-items:center;gap:5px;padding:6px 9px;border-radius:4px;cursor:pointer;transition:all .12s;font-size:.74rem;font-weight:500}
+.ds-item:hover{background:var(--surface3)}
+.ds-item.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.ds-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ds-badge{display:inline-flex;padding:1px 5px;border-radius:3px;font-size:.5rem;font-weight:700;letter-spacing:.03em;flex-shrink:0}
+.db-json{background:var(--accent-soft);color:var(--accent)}
+.db-xml{background:var(--orange-soft);color:var(--orange)}
+.db-builtin{background:var(--green-soft);color:var(--green)}
+.db-xsd{background:var(--purple-soft);color:var(--purple)}
 
 /* ── XSD panel ── */
-.xsd-panel{background:var(--purple-bg);border:1px solid rgba(167,139,250,0.2);border-radius:var(--radius);
-  padding:12px;margin-top:10px;font-size:0.78rem}
-.xsd-hints-list{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
-.xsd-hint-tag{padding:2px 8px;border-radius:10px;font-size:0.68rem;font-family:var(--font-mono)}
-.xsd-string-tag{background:rgba(96,165,250,0.12);color:var(--blue);border:1px solid rgba(96,165,250,0.25)}
-.xsd-array-tag{background:rgba(251,146,60,0.12);color:var(--orange);border:1px solid rgba(251,146,60,0.25)}
+.xsd-area{margin-top:9px;display:none;padding-top:9px;border-top:1px dashed var(--border)}
+.xsd-hint-info{font-size:.62rem;color:var(--muted);line-height:1.5;margin-bottom:7px;padding:7px 9px;background:var(--purple-soft);border-radius:var(--radius-xs);border:1px solid var(--purple-mid)}
+.xsd-panel{margin-top:7px;padding:9px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border-light)}
+.xsd-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.xsd-tag{font-size:.59rem;padding:2px 6px;border-radius:3px;font-family:var(--mono);font-weight:500}
+.xsd-array-tag{background:var(--orange-soft);color:var(--orange)}
+.xsd-string-tag{background:var(--accent-soft);color:var(--accent)}
 
-/* ── Agg params expanded ── */
-.agg-params-row{display:flex;gap:8px;align-items:flex-end;padding:6px 12px 10px;
-  background:var(--bg3);border:1px solid var(--border);border-top:none;
-  border-radius:0 0 var(--radius) var(--radius);margin-bottom:8px;flex-wrap:wrap}
-.agg-params-row label{font-size:0.68rem;margin-bottom:3px}
-.agg-params-row input,.agg-params-row select{font-size:0.78rem;padding:5px 8px}
+/* ── Stats bar ── */
+.stats-bar{display:flex;margin-top:9px;background:var(--surface2);border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border-light)}
+.stat-item{flex:1;padding:7px 8px;text-align:center;border-right:1px solid var(--border-light)}
+.stat-item:last-child{border-right:none}
+.stat-item b{display:block;font-size:.95rem;color:var(--accent);line-height:1.2;font-weight:800}
+.stat-item span{font-size:.54rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700}
 
-@media(max-width:640px){
-  .app-container{padding:12px}
-  .filter-row,.agg-row,.local-filter-row{flex-wrap:wrap}
-  .row{flex-direction:column}.row .col{width:100%}
-}
+/* ── Filter rows ── */
+.frow{background:var(--surface2);border:1.5px solid var(--border-light);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:7px;position:relative;transition:border-color .15s}
+.frow:hover{border-color:var(--border)}
+.frow .x{position:absolute;top:7px;right:8px;background:none;border:none;color:var(--muted2);cursor:pointer;font-size:14px;line-height:1;padding:2px 5px;border-radius:4px;transition:all .15s;font-family:inherit}
+.frow .x:hover{color:var(--red);background:var(--red-soft)}
+.iparams{display:flex;gap:7px;align-items:flex-end;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)}
+.iparams>div{flex:1;min-width:55px}
+.iparams label{font-size:.57rem}
+.iparams input,.iparams select{padding:5px 7px;font-size:.69rem}
+
+/* ── Group by ── */
+.gb-item{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1.5px solid var(--border-light);border-radius:var(--radius-xs);padding:6px 10px;margin-bottom:5px;font-size:.74rem;font-weight:500;transition:all .12s}
+.gb-item:hover{border-color:var(--accent);background:var(--accent-soft)}
+.gb-idx{width:18px;height:18px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:white;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font-size:.57rem;font-weight:800;flex-shrink:0;margin-right:6px}
+.gb-acts{display:flex;gap:2px}
+.gb-acts button{padding:2px 5px;font-size:.57rem;border:1px solid var(--border);border-radius:3px;cursor:pointer;background:var(--surface);color:var(--muted);line-height:1;transition:all .12s;font-family:inherit}
+.gb-acts button:hover{background:var(--surface3);color:var(--text)}
+.gb-acts .x{background:none;border:none;color:var(--red);font-size:13px}
+
+/* ── Presets ── */
+.presets{display:flex;flex-wrap:wrap;gap:5px}
+.presets .btn{font-size:.65rem;padding:5px 10px}
+
+/* ── Buttons ── */
+.btn{padding:6px 12px;border:1.5px solid var(--border);border-radius:var(--radius-xs);cursor:pointer;font-size:.69rem;font-weight:600;background:var(--surface2);color:var(--text);transition:all .13s;display:inline-flex;align-items:center;gap:5px;font-family:inherit;white-space:nowrap}
+.btn:hover{background:var(--surface3);border-color:var(--muted)}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-accent:hover{filter:brightness(1.09)}
+.btn-sm{padding:4px 9px;font-size:.63rem}
+.btn-go{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;width:100%;padding:12px;font-size:.84rem;font-weight:700;border-radius:var(--radius-sm);margin-top:11px;cursor:pointer;letter-spacing:.01em;transition:all .15s;font-family:inherit;box-shadow:0 3px 10px rgba(37,99,235,.25)}
+.btn-go:hover{opacity:.93;box-shadow:0 5px 14px rgba(37,99,235,.35)}
+.btn-go:active{transform:scale(.99)}
+
+/* ── WHERE mode bar ── */
+.mode-bar{display:flex;gap:5px;margin-bottom:9px}
+.auto-hint{font-size:.63rem;color:var(--muted);padding:7px 10px;background:var(--accent-soft);border-radius:var(--radius-xs);border:1px solid var(--accent-mid);margin-bottom:9px;line-height:1.5}
+
+/* ── Tabs ── */
+.tab-bar{display:flex;gap:2px;margin-bottom:10px;background:var(--surface2);padding:3px;border-radius:var(--radius-sm)}
+.tab{padding:6px 14px;border-radius:var(--radius-xs);cursor:pointer;font-size:.68rem;background:transparent;border:none;color:var(--muted);font-weight:600;transition:all .13s;flex:1;text-align:center;font-family:inherit}
+.tab.on{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+
+/* ── Code ── */
+pre{background:var(--surface2);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:11px;font-size:.7rem;overflow:auto;max-height:380px;font-family:var(--mono);white-space:pre-wrap;word-break:break-word;line-height:1.62;color:var(--text)}
+
+/* ── Table ── */
+.tbl-wrap{max-height:380px;overflow:auto;border:1px solid var(--border-light);border-radius:var(--radius-sm);background:var(--surface)}
+.rtable{width:max-content;min-width:100%;border-collapse:collapse;font-size:.7rem}
+.rtable th{background:var(--surface2);padding:7px 13px;text-align:left;border-bottom:2px solid var(--border);color:var(--accent);font-weight:700;position:sticky;top:0;z-index:1;white-space:nowrap;font-size:.64rem;text-transform:uppercase;letter-spacing:.04em;font-family:var(--mono)}
+.rtable td{padding:6px 13px;border-bottom:1px solid var(--border-light);white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis}
+.rtable tr:hover td{background:var(--accent-soft)}
+.rtable td:first-child,.rtable th:first-child{background:var(--surface2);font-weight:600;position:sticky;left:0;z-index:2}
+.rtable th:first-child{z-index:3}
+.rtable tr:hover td:first-child{background:var(--surface3)}
+.tbl-meta{display:flex;align-items:center;gap:6px;font-size:.63rem;color:var(--muted);margin-bottom:6px;padding:5px 9px;background:var(--surface2);border-radius:var(--radius-xs);font-weight:600;border:1px solid var(--border-light)}
+.tbl-meta b{color:var(--accent)}
+.empty{text-align:center;padding:38px;color:var(--muted2);font-size:.76rem;font-weight:500}
+.err-msg{color:var(--red);font-size:.7rem;margin-top:7px;padding:7px 11px;background:var(--red-soft);border-radius:var(--radius-xs);border:1px solid var(--red-mid);font-weight:500;display:none}
+.ds-panel{display:none;margin-top:9px}
+.ds-panel.open{display:block}
+.ds-actions{display:flex;gap:6px;margin-top:7px}
 </style>
 </head>
 <body>
-<div class="toast-container" id="toastContainer"></div>
-<div class="app-container">
+<div class="container">
 
-  <header class="app-header">
-    <div class="logo"><i class="fas fa-layer-group"></i></div>
-    <h1>Visual <span>Aggregator</span></h1>
-    <span class="subtitle">SQL-like aggregation · JSON · XML · XSD hints</span>
-  </header>
+<!-- Topbar -->
+<div class="topbar">
+  <div class="tb-left">
+    <div class="logo">
+      <svg viewBox="0 0 24 24"><rect x="2" y="14" width="13" height="3" rx="1.5" opacity=".55"/><rect x="2" y="9" width="18" height="3" rx="1.5" opacity=".78"/><rect x="2" y="4" width="20" height="3" rx="1.5"/></svg>
+    </div>
+    <div class="tb-title">
+      <h1>Visual <span>Aggregator</span></h1>
+      <p>sum · avg · min · max · count · group by · where · array-aware · time-series · JSON · XML</p>
+    </div>
+  </div>
+  <div class="tb-right">
+    <span class="theme-lbl">☀</span>
+    <button class="theme-sw" onclick="toggleTheme()" title="Toggle light/dark"></button>
+    <span class="theme-lbl">☾</span>
+  </div>
+</div>
 
-  <!-- ══ DATA SOURCE ══ -->
-  <div class="card full-width" style="margin-bottom:20px">
-    <div class="card-header"><i class="fas fa-database" style="color:var(--accent)"></i> Data Source</div>
-    <div class="card-body">
-      <div class="row" style="align-items:flex-start;gap:20px">
+<!-- Data Source -->
+<div class="card">
+  <div class="card-hdr c-blue">
+    <div class="hdr-dot"></div>
+    <span class="hdr-lbl">Data Source</span>
+  </div>
+  <div class="card-body">
+    <div class="ds-grid">
 
-        <!-- Upload zone -->
-        <div class="col" style="max-width:320px">
-          <label>Upload dataset</label>
-          <div class="upload-zone" id="uploadZone">
-            <input type="file" accept=".json,.xml" id="fileUpload" onchange="handleFileUpload(event)">
-            <div class="upload-icon"><i class="fas fa-file-upload"></i></div>
-            <div class="upload-text">Klik atau drag file ke sini</div>
-            <div class="upload-sub">JSON (.json) · XML (.xml)</div>
+      <!-- Upload side -->
+      <div>
+        <label>Upload File</label>
+        <div class="dropzone" id="dropzone"
+          ondragover="event.preventDefault();this.classList.add('drag')"
+          ondragleave="this.classList.remove('drag')"
+          ondrop="onDrop(event)">
+          <input type="file" id="fileUp" accept=".json,.xml" onchange="onFileSelected(this)">
+          <div class="dz-icon" id="dzIcon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           </div>
-
-          <!-- XSD upload (appears after XML is loaded) -->
-          <div id="xsdUploadArea" style="margin-top:10px;display:none">
-            <label>Upload XSD (opsional, untuk dataset XML aktif)</label>
-            <div style="display:flex;gap:6px">
-              <label class="btn btn-purple btn-sm" style="cursor:pointer;flex:1;justify-content:center">
-                <i class="fas fa-file-code"></i> Upload XSD
-                <input type="file" accept=".xsd,.xml" style="display:none" id="xsdUpload" onchange="handleXSDUpload(event)">
-              </label>
-              <button class="btn btn-sm" onclick="showXSDInfo()" id="xsdInfoBtn" style="display:none" title="Lihat hints XSD">
-                <i class="fas fa-info-circle"></i>
-              </button>
-            </div>
-            <div id="xsdPanel" style="display:none"></div>
-          </div>
-        </div>
-
-        <!-- Dataset list -->
-        <div class="col">
-          <label>Dataset tersedia</label>
-          <div id="datasetList" style="display:flex;flex-direction:column;gap:4px;max-height:180px;overflow-y:auto;
-            background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:6px">
-            <div class="empty-state" style="padding:16px"><i class="fas fa-database"></i>Memuat...</div>
+          <div>
+            <div class="dz-title" id="dzTitle">Drop file atau klik untuk browse</div>
+            <div class="dz-sub" id="dzSub">.json / .xml</div>
           </div>
         </div>
 
-        <!-- Data preview button -->
-        <div class="col-auto" style="align-self:flex-end">
-          <button class="btn btn-sm" onclick="toggleDataViewer()"><i class="fas fa-eye"></i> Preview data</button>
+        <!-- Format notes -->
+        <div class="fmt-notes">
+          <div class="fmt-note"><span class="fmt-pill json-pill">JSON</span><span>Self-describing — tipe data tersimpan di file. Tidak perlu schema eksternal.</span></div>
+          <div class="fmt-note"><span class="fmt-pill xml-pill">XML</span><span>Semua nilai teks. Engine pakai heuristik. Upload XSD untuk akurasi penuh.</span></div>
+        </div>
+
+        <!-- XSD (hanya untuk XML) -->
+        <div class="xsd-area" id="xsdArea">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+            <label style="margin:0">XSD Hints</label>
+            <span class="fmt-pill xml-pill">XML only</span>
+            <button class="btn btn-sm" id="xsdInfoBtn" onclick="toggleXSDPanel()" style="display:none;margin-left:auto">Detail</button>
+          </div>
+          <div class="xsd-hint-info">
+            <b>Force array</b> — single-item container selalu jadi <code style="font-family:var(--mono);font-size:.9em">[]</code><br>
+            <b>Force string</b> — ZipCode, kode rekening tidak di-coerce ke angka
+          </div>
+          <label class="btn btn-sm" style="cursor:pointer;width:100%;justify-content:center;margin-bottom:0">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Upload XSD
+            <input type="file" accept=".xsd,.xml" style="display:none" id="xsdUp" onchange="handleXSDUpload(event)">
+          </label>
+          <div id="xsdPanel" style="display:none"></div>
         </div>
       </div>
 
-      <!-- Data viewer -->
-      <div id="dataViewerArea" style="display:none;margin-top:12px">
-        <div class="code-block data-viewer" id="dataViewer"></div>
+      <!-- Dataset list side -->
+      <div>
+        <label>Dataset Tersedia</label>
+        <div class="ds-list" id="dsList"><div class="empty" style="padding:18px">Memuat...</div></div>
+        <div class="ds-actions">
+          <button class="btn btn-sm" onclick="togglePanel('dprev',this)">
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            Preview
+          </button>
+          <button class="btn btn-sm" onclick="togglePanel('schPrev',this)">
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            Schema
+          </button>
+        </div>
+        <div class="stats-bar" id="dsStats" style="display:none"></div>
+      </div>
+    </div>
+
+    <div id="dsErr" class="err-msg"></div>
+    <div id="dprev" class="ds-panel"><pre id="dprevC" style="max-height:200px"></pre></div>
+    <div id="schPrev" class="ds-panel"><pre id="schC" style="max-height:200px"></pre></div>
+  </div>
+</div>
+
+<div class="grid2">
+<div>
+
+  <!-- Presets -->
+  <div class="card">
+    <div class="card-hdr c-orange">
+      <div class="hdr-dot"></div>
+      <span class="hdr-lbl">Quick Presets</span>
+      <span class="hdr-hint">Klik untuk load query contoh</span>
+    </div>
+    <div class="card-body">
+      <div class="presets">
+        <button class="btn" onclick="preset('avg_bal_dept')">Avg Balance/Dept</button>
+        <button class="btn" onclick="preset('cc_city')">CC by Kota</button>
+        <button class="btn" onclick="preset('max_delq')">Max Delinquency</button>
+        <button class="btn" onclick="preset('worst_delq6')">Worst Delq 6M</button>
+        <button class="btn" onclick="preset('max_coll3')">Max Coll 3M</button>
+        <button class="btn" onclick="preset('ever_coll3')">Ever Coll ≥3 in 3M</button>
+        <button class="btn" onclick="preset('recent_acct')">Akun Baru 3M</button>
+        <button class="btn" onclick="preset('multi_ts')">Multi Time-Series</button>
+        <button class="btn" onclick="preset('salary_by_dept')">Salary by Dept</button>
       </div>
     </div>
   </div>
 
-  <div class="main-grid">
-    <!-- ══ LEFT: BUILDER ══ -->
-    <div>
-
-      <!-- Presets -->
-      <div class="card" style="margin-bottom:20px">
-        <div class="card-header"><i class="fas fa-bolt" style="color:var(--accent)"></i> Query Presets</div>
-        <div class="card-body">
-          <div class="presets-row" id="presetsRow">
-            <button class="preset-btn" onclick="loadPreset(0)">Avg outstanding/dept</button>
-            <button class="preset-btn" onclick="loadPreset(1)">CC limit/kota</button>
-            <button class="preset-btn" onclick="loadPreset(2)">Max delinquency</button>
-            <button class="preset-btn" onclick="loadPreset(3)">Worst delq last 6mo</button>
-            <button class="preset-btn" onclick="loadPreset(4)">Max coll last 3mo</button>
-            <button class="preset-btn" onclick="loadPreset(5)">Ever coll≥3 last 3mo</button>
-            <button class="preset-btn" onclick="loadPreset(6)">Active loans/dept</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- LOCAL FILTER -->
-      <div class="card local-card" style="margin-bottom:20px">
-        <div class="card-header">
-          <i class="fas fa-filter"></i> Local Filter
-          <span class="header-desc">Filter elemen array sebelum agregasi. Parent tanpa elemen tetap muncul.</span>
-        </div>
-        <div class="card-body">
-          <div class="row" style="margin-bottom:10px">
-            <div class="col" style="max-width:280px">
-              <label>Array</label>
-              <select id="lfArraySelect" onchange="onLocalFilterArrayChange()">
-                <option value="">-- tidak ada --</option>
-              </select>
-            </div>
-            <div class="col-auto">
-              <button class="btn btn-red btn-sm" onclick="clearLocalFilter()"><i class="fas fa-trash"></i> Clear</button>
-            </div>
-          </div>
-          <div id="lfConditionsContainer"></div>
-          <button class="btn btn-sm btn-orange" id="lfAddBtn" onclick="addLocalFilterCondition()" style="display:none">
-            <i class="fas fa-plus"></i> Tambah Kondisi
-          </button>
-        </div>
-      </div>
-
-      <!-- WHERE (Global) -->
-      <div class="card" style="margin-bottom:20px">
-        <div class="card-header">
-          <i class="fas fa-globe" style="color:var(--blue)"></i> WHERE (Global)
-          <span class="header-desc">Filter parent record setelah local filter.</span>
-        </div>
-        <div class="card-body">
-          <div id="filtersContainer"></div>
-          <button class="btn btn-sm btn-blue" onclick="addFilter()"><i class="fas fa-plus"></i> Tambah Filter</button>
-        </div>
-      </div>
-
-      <!-- GROUP BY -->
-      <div class="card" style="margin-bottom:20px">
-        <div class="card-header"><i class="fas fa-object-group" style="color:var(--accent)"></i> GROUP BY</div>
-        <div class="card-body">
-          <div class="row">
-            <div class="col" style="max-width:280px"><select id="gbFieldSelect"></select></div>
-            <div class="col-auto"><button class="btn btn-sm btn-green" onclick="addGroupBy()"><i class="fas fa-plus"></i> Tambah</button></div>
-          </div>
-          <div class="gb-container" id="gbChips" style="margin-top:10px">
-            <span style="color:var(--fg-muted);font-size:0.78rem;padding:4px 0">Belum ada field</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Aggregations -->
-      <div class="card" style="margin-bottom:20px">
-        <div class="card-header"><i class="fas fa-calculator" style="color:var(--accent)"></i> Aggregations</div>
-        <div class="card-body">
-          <div id="aggContainer"></div>
-          <button class="btn btn-sm btn-green" onclick="addAggregation()"><i class="fas fa-plus"></i> Tambah Agregasi</button>
-        </div>
-      </div>
-
-      <button class="btn btn-accent" style="width:100%;padding:12px;font-size:0.95rem;justify-content:center" onclick="executeQuery()">
-        <i class="fas fa-play"></i> Execute Query
-      </button>
+  <!-- Local Filter -->
+  <div class="card">
+    <div class="card-hdr c-purple">
+      <div class="hdr-dot"></div>
+      <span class="hdr-lbl">Local Filter</span>
+      <span class="hdr-badge bdg-purple">Pre-Array</span>
+      <span class="hdr-hint">Filter elemen array sebelum agregasi</span>
     </div>
+    <div class="card-body">
+      <div id="lfList"></div>
+      <button class="btn" onclick="addLF()">+ Tambah Local Filter</button>
+    </div>
+  </div>
 
-    <!-- ══ RIGHT: DSL + RESULTS ══ -->
-    <div>
-      <div class="card" style="margin-bottom:20px">
-        <div class="tabs">
-          <button class="tab active" onclick="switchTab('dsl',this)">DSL Preview</button>
-          <button class="tab" onclick="switchTab('result',this)">Hasil</button>
-        </div>
-        <div class="card-body">
-          <div id="dslPanel">
-            <div class="code-block" id="dslPreview">
-              <span style="color:var(--fg-muted)">Konfigurasi query akan muncul di sini</span>
-            </div>
-          </div>
-          <div id="resultPanel" style="display:none">
-            <div id="resultArea">
-              <div class="empty-state"><i class="fas fa-table"></i>Hasil agregasi akan muncul di sini</div>
-            </div>
-          </div>
-        </div>
+  <!-- WHERE -->
+  <div class="card">
+    <div class="card-hdr c-blue">
+      <div class="hdr-dot"></div>
+      <span class="hdr-lbl">WHERE Filter</span>
+      <span class="hdr-hint">Filter record parent</span>
+    </div>
+    <div class="card-body">
+      <div class="mode-bar">
+        <button class="btn btn-accent" id="modeAuto" onclick="setMode('auto')">Auto-Classify</button>
+        <button class="btn" id="modeManual" onclick="setMode('manual')">Manual</button>
+      </div>
+      <div class="auto-hint" id="whereHint">
+        <strong>Auto</strong> — Kondisi pada field array otomatis masuk ke Local Filter. Field parent tetap di WHERE global.
+      </div>
+      <div id="wfList"></div>
+      <button class="btn" onclick="addWF()">+ Tambah WHERE</button>
+    </div>
+  </div>
+
+  <!-- Group By -->
+  <div class="card">
+    <div class="card-hdr c-green">
+      <div class="hdr-dot"></div>
+      <span class="hdr-lbl">Group By</span>
+      <span class="hdr-hint">Urutan = urutan kolom output · field array = explode mode</span>
+    </div>
+    <div class="card-body">
+      <div class="row" style="margin-bottom:8px">
+        <select id="gbSel" style="flex:3"></select>
+        <button class="btn btn-accent" onclick="addGBFromSel()" style="flex:0 0 auto">+ Add</button>
+      </div>
+      <div id="gbList"></div>
+    </div>
+  </div>
+
+  <!-- Aggregations -->
+  <div class="card">
+    <div class="card-hdr c-indigo">
+      <div class="hdr-dot"></div>
+      <span class="hdr-lbl">Aggregations</span>
+      <span class="hdr-hint">Params muncul otomatis untuk array-aware ops</span>
+    </div>
+    <div class="card-body">
+      <div id="aggList"></div>
+      <button class="btn" onclick="addAgg()">+ Tambah Agregasi</button>
+    </div>
+  </div>
+
+  <button class="btn-go" onclick="exec()">▶ Execute Query</button>
+</div>
+
+<!-- Right panel -->
+<div>
+  <div class="card">
+    <div class="card-hdr c-teal">
+      <div class="hdr-dot"></div>
+      <span class="hdr-lbl">Result</span>
+      <span id="resBadge" class="hdr-hint"></span>
+    </div>
+    <div class="card-body" style="padding:10px">
+      <div class="tab-bar">
+        <div class="tab on" onclick="stab(this,'tDSL')">DSL</div>
+        <div class="tab" onclick="stab(this,'tRes')">JSON</div>
+        <div class="tab" onclick="stab(this,'tTbl')">Table</div>
+      </div>
+      <div id="tDSL"><pre id="dslP">{ }</pre></div>
+      <div id="tRes" style="display:none"><pre id="resP">Run a query...</pre></div>
+      <div id="tTbl" style="display:none">
+        <div id="tblMeta"></div>
+        <div id="tblC" class="empty">Run a query to see results</div>
       </div>
     </div>
   </div>
 </div>
+</div><!-- /grid2 -->
+</div><!-- /container -->
 
 <script>
-// ===================== State =====================
-let currentSchema = [];
-let currentDataset = '';
-let currentDatasetFormat = ''; // 'json' | 'xml' | 'builtin'
-let filters = [];
-let groupByFields = [];
-let aggregations = [];
-let localFilter = { arrayPath:'', conditions:[] };
-let filterIdCounter = 0, aggIdCounter = 0, lfIdCounter = 0;
-let datasetMeta = {}; // name → {format, xsdLoaded}
+// ── State ──────────────────────────────────────────────────────────────────
+let curDS='', schema=[], filterMode='auto';
+let lfId=0, wfId=0, aggId=0, gbId=0;
+const datasetMeta={}; // name → {format, xsdLoaded}
 
-const OPERATORS = [
-  {value:'$eq',label:'= (equal)'},{value:'$ne',label:'!= (not equal)'},
-  {value:'$gt',label:'> (gt)'},{value:'$gte',label:'>= (gte)'},
-  {value:'$lt',label:'< (lt)'},{value:'$lte',label:'<= (lte)'},
-  {value:'$in',label:'IN'},{value:'$contains',label:'contains'},
-  {value:'$notnull',label:'is not null'},{value:'$null',label:'is null'},
-];
+const WHERE_OPS=['$eq','$ne','$gt','$gte','$lt','$lte','$in','$nin','$contains','$notnull','$null','$within_months','$between'];
+const AGG_OPS=['count','count_rows','count_distinct','sum','avg','min','max','worst_last_n','max_last_n','min_last_n','ever_has_last_n','count_last_n','sum_last_n','count_since','count_date_last_n'];
+const NEEDS_N=['worst_last_n','max_last_n','min_last_n','ever_has_last_n','count_last_n','sum_last_n','count_since','count_date_last_n'];
+const NEEDS_VAL_CMP=['ever_has_last_n','count_last_n'];
 
-// Window ops: need N. Date-window ops: need N + date_field + ref_date + unit.
-// ever/count_last_n also need value param.
-const AGG_OPS = [
-  {value:'sum',label:'SUM'},{value:'avg',label:'AVG'},
-  {value:'min',label:'MIN'},{value:'max',label:'MAX',dateWindow:true},
-  {value:'count',label:'COUNT'},{value:'count_distinct',label:'COUNT DISTINCT'},
-  {value:'worst_last_n',label:'WORST LAST N (index)',windowN:true},
-  {value:'max_last_n',label:'MAX LAST N (index)',windowN:true},
-  {value:'ever_has_last_n',label:'EVER HAS LAST N (index)',windowN:true,needsValue:true},
-  {value:'count_last_n',label:'COUNT LAST N (index)',windowN:true,needsValue:true},
-  {value:'sum_last_n',label:'SUM LAST N (index)',windowN:true},
-  {value:'count_date_last_n',label:'COUNT DATE LAST N (date_field)',dateWindow:true},
-];
+// ── Theme ──────────────────────────────────────────────────────────────────
+function initTheme(){document.documentElement.setAttribute('data-theme',localStorage.getItem('theme')||'light')}
+function toggleTheme(){const t=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',t);localStorage.setItem('theme',t)}
 
-function getOpDef(op) { return AGG_OPS.find(o=>o.value===op)||{}; }
+// ── Utility ────────────────────────────────────────────────────────────────
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;')}
+function showErr(m){const e=document.getElementById('dsErr');e.textContent=m;e.style.display='block';setTimeout(()=>e.style.display='none',6000)}
 
-// ===================== Init =====================
-document.addEventListener('DOMContentLoaded', () => {
-  loadDatasets();
-  addFilter(); addAggregation(); updateDSL();
-  setupDragDrop();
-});
-
-// ===================== API =====================
-async function apiGet(url){ return (await fetch(url)).json(); }
-async function apiPost(url,body,contentType='application/json'){
-  const res = await fetch(url,{method:'POST',headers:{'Content-Type':contentType},body:typeof body==='string'?body:JSON.stringify(body)});
-  if(!res.ok){const err=await res.text();throw new Error(err);}
-  return res.json();
+function smartJSON(v,d){
+  d=d||0;const p='  '.repeat(d),p1='  '.repeat(d+1);
+  if(v===null||v===undefined)return'null';
+  if(typeof v==='boolean'||typeof v==='number')return String(v);
+  if(typeof v==='string')return JSON.stringify(v);
+  if(Array.isArray(v)){if(!v.length)return'[]';const simple=v.every(x=>x===null||typeof x!=='object');if(simple)return'['+v.map(x=>smartJSON(x,0)).join(', ')+']';return'[\n'+v.map(x=>p1+smartJSON(x,d+1)).join(',\n')+'\n'+p+']'}
+  if(typeof v==='object'){const ks=Object.keys(v);if(!ks.length)return'{}';return'{\n'+ks.map(k=>p1+JSON.stringify(k)+': '+smartJSON(v[k],d+1)).join(',\n')+'\n'+p+'}'}
+  return String(v)
 }
 
-// ===================== Drag & Drop =====================
-function setupDragDrop(){
-  const zone = document.getElementById('uploadZone');
-  zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag-over')});
-  zone.addEventListener('dragleave',()=>zone.classList.remove('drag-over'));
-  zone.addEventListener('drop',e=>{
-    e.preventDefault(); zone.classList.remove('drag-over');
-    const file = e.dataTransfer.files[0]; if(file) processFile(file,'data');
-  });
+// ── Panels ─────────────────────────────────────────────────────────────────
+function togglePanel(id,btn){
+  const p=document.getElementById(id),open=p.classList.contains('open');
+  document.querySelectorAll('.ds-panel').forEach(x=>x.classList.remove('open'));
+  document.querySelectorAll('.ds-actions .btn').forEach(x=>x.classList.remove('btn-accent'));
+  if(!open){p.classList.add('open');if(btn)btn.classList.add('btn-accent')}
+}
+function stab(el,id){
+  document.querySelectorAll('.tab-bar .tab').forEach(t=>t.classList.remove('on'));el.classList.add('on');
+  ['tDSL','tRes','tTbl'].forEach(x=>document.getElementById(x).style.display=x===id?'block':'none')
 }
 
-// ===================== Dataset List =====================
-async function loadDatasets(){
-  try {
-    const data = await apiGet('/api/datasets');
-    const xsdData = await apiGet('/api/xsd');
-    const xsdSet = new Set(xsdData.xsdDatasets||[]);
-    renderDatasetList(data.datasets, xsdSet);
-  } catch(e){ showToast('Gagal memuat dataset','error'); }
-}
-
-function renderDatasetList(names, xsdSet){
-  const el = document.getElementById('datasetList');
-  if(!names||!names.length){el.innerHTML='<div class="empty-state" style="padding:16px"><i class="fas fa-database"></i>Belum ada dataset</div>';return;}
-  el.innerHTML = names.map(name=>{
-    const meta = datasetMeta[name]||{};
-    const fmt = meta.format||'builtin';
-    const hasXSD = xsdSet.has(name)||meta.xsdLoaded;
-    const fmtBadge = fmt==='xml'
-      ? '<span class="fmt-badge fmt-xml"><i class="fas fa-code"></i> XML</span>'
-      : fmt==='json'
-      ? '<span class="fmt-badge fmt-json"><i class="fas fa-brackets-curly"></i> JSON</span>'
-      : '<span class="fmt-badge fmt-builtin"><i class="fas fa-star"></i> builtin</span>';
-    const xsdBadge = hasXSD ? '<span class="xsd-badge" title="XSD hints aktif"><i class="fas fa-check-square"></i> XSD</span>' : '';
-    return `<div class="dataset-item${name===currentDataset?' active':''}" onclick="selectDataset('${name}','${fmt}')">
-      <div class="ds-name">${escapeHtml(name)}</div>
-      ${fmtBadge}${xsdBadge?'&nbsp;'+xsdBadge:''}
-    </div>`;
-  }).join('');
-}
-
-async function selectDataset(name, fmt){
-  currentDataset = name;
-  currentDatasetFormat = fmt||'builtin';
-  try {
-    currentSchema = await apiGet('/api/schema?dataset='+encodeURIComponent(name));
-    refreshFieldSelectors(); refreshLocalFilterArraySelect();
-    filters=[]; groupByFields=[]; aggregations=[];
-    localFilter={arrayPath:'',conditions:[]};
-    filterIdCounter=0; aggIdCounter=0; lfIdCounter=0;
-    addFilter(); addAggregation(); renderLocalFilterConditions(); renderGroupByChips(); updateDSL();
-    const rawData = await apiGet('/api/data?dataset='+encodeURIComponent(name));
-    document.getElementById('dataViewer').innerHTML = syntaxHighlight(JSON.stringify(rawData,null,2));
-    // Show XSD upload area for XML datasets
-    const xsdArea = document.getElementById('xsdUploadArea');
-    xsdArea.style.display = (currentDatasetFormat==='xml'||currentDatasetFormat==='builtin')?'block':'none';
-    // Refresh dataset list to update active state
-    await loadDatasets();
-  } catch(e){ showToast('Gagal memuat skema: '+e.message,'error'); }
-}
-
-// ===================== File Upload =====================
-async function handleFileUpload(event){
-  const file = event.target.files[0]; if(!file) return;
-  await processFile(file,'data');
-  event.target.value='';
-}
-
-async function processFile(file, type){
-  const isXML = file.name.toLowerCase().endsWith('.xml');
-  try {
-    const text = await file.text();
-    let result;
-    if(isXML){
-      result = await fetch('/api/upload',{
-        method:'POST',
-        headers:{'Content-Type':'application/xml'},
-        body:text
-      }).then(r=>r.json());
-    } else {
-      const parsed = JSON.parse(text);
-      const data = Array.isArray(parsed)?parsed:[parsed];
-      result = await apiPost('/api/upload', data);
-    }
-    datasetMeta[result.name] = {format: result.format||'json', xsdLoaded:false};
-    showToast(`"${result.name}" berhasil di-upload (${result.count} record · ${(result.format||'json').toUpperCase()})`,'success');
-    await loadDatasets();
-    await selectDataset(result.name, result.format||'json');
-  } catch(e){ showToast('Gagal upload: '+e.message,'error'); }
-}
-
-// ===================== XSD Upload =====================
-async function handleXSDUpload(event){
-  const file = event.target.files[0]; if(!file) return;
-  if(!currentDataset){showToast('Pilih dataset terlebih dahulu','info');return;}
-  try {
-    const text = await file.text();
-    const result = await fetch('/api/upload/xsd?dataset='+encodeURIComponent(currentDataset),{
-      method:'POST',
-      headers:{'Content-Type':'application/xml'},
-      body:text
-    }).then(r=>r.json());
-    if(datasetMeta[currentDataset]) datasetMeta[currentDataset].xsdLoaded = true;
-    showToast(`XSD dimuat: ${result.arrayPaths} array paths, ${result.stringPaths} string paths`,'success');
-    document.getElementById('xsdInfoBtn').style.display='inline-flex';
-    await loadDatasets();
-    await showXSDInfo();
-  } catch(e){ showToast('Gagal upload XSD: '+e.message,'error'); }
-  event.target.value='';
-}
-
-async function showXSDInfo(){
-  if(!currentDataset)return;
+// ── Init ───────────────────────────────────────────────────────────────────
+async function init(){
+  initTheme();
   try{
-    const info = await apiGet('/api/xsd/info?dataset='+encodeURIComponent(currentDataset));
-    const panel = document.getElementById('xsdPanel');
-    const btn = document.getElementById('xsdInfoBtn');
-    if(!info.arrayPaths.length && !info.stringPaths.length){panel.style.display='none';btn.style.display='none';return;}
-    btn.style.display='inline-flex';
-    panel.style.display='block';
-    panel.innerHTML = `<div class="xsd-panel">
-      <div style="font-weight:600;color:var(--purple);margin-bottom:6px"><i class="fas fa-check-square"></i> XSD Hints aktif</div>
-      ${info.arrayPaths.length?`<div style="margin-bottom:4px;font-size:0.72rem;color:var(--fg-muted)">Force array:</div>
-        <div class="xsd-hints-list">${info.arrayPaths.map(p=>`<span class="xsd-hint-tag xsd-array-tag">${escapeHtml(p)}</span>`).join('')}</div>`:''}
-      ${info.stringPaths.length?`<div style="margin-top:8px;margin-bottom:4px;font-size:0.72rem;color:var(--fg-muted)">Force string (no coerce):</div>
-        <div class="xsd-hints-list">${info.stringPaths.map(p=>`<span class="xsd-hint-tag xsd-string-tag">${escapeHtml(p)}</span>`).join('')}</div>`:''}
+    const [dr,xr]=await Promise.all([fetch('/api/datasets'),fetch('/api/xsd')]);
+    const {datasets=[]}=await dr.json();
+    const {xsdDatasets=[]}=await xr.json();
+    renderDsList(datasets,new Set(xsdDatasets));
+    if(datasets.includes('employees'))await selectDS('employees','builtin');
+  }catch(e){showErr('Server: '+e.message)}
+}
+
+// ── Dataset list ───────────────────────────────────────────────────────────
+function renderDsList(names,xsdSet){
+  const el=document.getElementById('dsList');
+  if(!names||!names.length){el.innerHTML='<div class="empty" style="padding:16px">Belum ada dataset</div>';return}
+  el.innerHTML=names.map(n=>{
+    const m=datasetMeta[n]||{};
+    const fmt=m.format||'builtin';
+    const isXML=fmt==='xml';
+    const hasXSD=isXML&&(xsdSet.has(n)||m.xsdLoaded);
+    const b=fmt==='xml'?'<span class="ds-badge db-xml">XML</span>':fmt==='json'?'<span class="ds-badge db-json">JSON</span>':'<span class="ds-badge db-builtin">builtin</span>';
+    const x=hasXSD?'&nbsp;<span class="ds-badge db-xsd">XSD</span>':'';
+    return`<div class="ds-item${n===curDS?' active':''}" onclick="selectDS('${esc(n)}','${fmt}')"><span class="ds-name">${esc(n)}</span>${b}${x}</div>`;
+  }).join('')
+}
+
+async function selectDS(name,fmt){
+  curDS=name;
+  try{
+    const [sr,dr,xr]=await Promise.all([
+      fetch('/api/schema?dataset='+encodeURIComponent(name)),
+      fetch('/api/data?dataset='+encodeURIComponent(name)),
+      fetch('/api/xsd')
+    ]);
+    schema=await sr.json();if(!Array.isArray(schema))schema=[];
+    const data=await dr.json();
+    const {xsdDatasets=[]}=await xr.json();
+
+    document.getElementById('dprevC').textContent=smartJSON(data);
+    document.getElementById('schC').textContent=smartJSON(schema);
+
+    const sc=schema.filter(f=>!(f.type||'').startsWith('array_')).length;
+    const ac=schema.filter(f=>(f.type||'').startsWith('array_')).length;
+    const ts=schema.filter(f=>f.type==='array_number').length;
+    document.getElementById('dsStats').style.display='flex';
+    document.getElementById('dsStats').innerHTML=`<div class="stat-item"><b>${sc}</b><span>Scalar</span></div><div class="stat-item"><b>${ac}</b><span>Array</span></div><div class="stat-item"><b>${ts}</b><span>Time-Series</span></div><div class="stat-item"><b>${schema.length}</b><span>Total</span></div>`;
+
+    // XSD area — only for XML
+    const isXML=fmt==='xml';
+    document.getElementById('xsdArea').style.display=isXML?'block':'none';
+    if(isXML){
+      const xsdSet=new Set(xsdDatasets);
+      const hasXSD=(datasetMeta[name]||{}).xsdLoaded||xsdSet.has(name);
+      document.getElementById('xsdInfoBtn').style.display=hasXSD?'inline-flex':'none';
+      if(hasXSD)loadXSDPanel();else document.getElementById('xsdPanel').style.display='none';
+    }
+
+    updDropdowns();updGB();updDSL();
+    renderDsList(await fetch('/api/datasets').then(r=>r.json()).then(d=>d.datasets||[]),new Set(xsdDatasets));
+  }catch(e){showErr('Load: '+e.message)}
+}
+
+// ── File upload ────────────────────────────────────────────────────────────
+function onFileSelected(inp){
+  const dz=document.getElementById('dropzone'),ti=document.getElementById('dzTitle'),su=document.getElementById('dzSub'),ic=document.getElementById('dzIcon');
+  if(inp.files&&inp.files[0]){
+    const f=inp.files[0];ti.textContent=f.name;su.textContent=f.size>1048576?(f.size/1048576).toFixed(1)+' MB':Math.round(f.size/1024)+' KB';
+    dz.classList.add('has-file');ic.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+    onUpload();
+  }
+}
+function onDrop(e){
+  e.preventDefault();document.getElementById('dropzone').classList.remove('drag');
+  const f=e.dataTransfer.files[0];if(!f)return;
+  const dt=new DataTransfer();dt.items.add(f);
+  const inp=document.getElementById('fileUp');inp.files=dt.files;onFileSelected(inp);
+}
+async function onUpload(){
+  const file=document.getElementById('fileUp').files[0];if(!file)return;
+  const text=await file.text();
+  const isXML=file.name.toLowerCase().endsWith('.xml')||text.trim().startsWith('<');
+  const fmt=isXML?'xml':'json';
+  try{
+    let body,ct;
+    if(isXML){body=text;ct='application/xml'}
+    else{const p=JSON.parse(text);body=JSON.stringify(Array.isArray(p)?p:[p]);ct='application/json'}
+    const res=await fetch('/api/upload',{method:'POST',headers:{'Content-Type':ct},body}).then(r=>r.json());
+    if(res.error){showErr(res.error);return}
+    datasetMeta[res.name]={format:res.format||fmt,xsdLoaded:false};
+    await selectDS(res.name,res.format||fmt);
+  }catch(e){showErr('Upload: '+e.message)}
+}
+
+// ── XSD upload ─────────────────────────────────────────────────────────────
+async function handleXSDUpload(e){
+  const file=e.target.files[0];if(!file||!curDS)return;
+  try{
+    const text=await file.text();
+    const res=await fetch('/api/upload/xsd?dataset='+encodeURIComponent(curDS),{method:'POST',headers:{'Content-Type':'application/xml'},body:text}).then(r=>r.json());
+    if(res.error){showErr(res.error);return}
+    if(datasetMeta[curDS])datasetMeta[curDS].xsdLoaded=true;
+    document.getElementById('xsdInfoBtn').style.display='inline-flex';
+    loadXSDPanel();
+  }catch(e){showErr('XSD upload: '+e.message)}
+  e.target.value='';
+}
+function toggleXSDPanel(){const p=document.getElementById('xsdPanel');p.style.display=p.style.display==='none'?'block':'none'}
+async function loadXSDPanel(){
+  if(!curDS)return;
+  try{
+    const info=await fetch('/api/xsd/info?dataset='+encodeURIComponent(curDS)).then(r=>r.json());
+    const p=document.getElementById('xsdPanel');
+    if(!info.arrayPaths.length&&!info.stringPaths.length){p.style.display='none';return}
+    p.style.display='block';
+    p.innerHTML=`<div class="xsd-panel">
+      <div style="font-size:.61rem;font-weight:700;color:var(--purple);margin-bottom:6px">Hints Aktif</div>
+      ${info.arrayPaths.length?`<div style="font-size:.59rem;color:var(--muted);margin-bottom:3px"><b style="color:var(--orange)">Force array</b></div><div class="xsd-tags">${info.arrayPaths.map(p=>`<span class="xsd-tag xsd-array-tag">${esc(p)}</span>`).join('')}</div>`:''}
+      ${info.stringPaths.length?`<div style="font-size:.59rem;color:var(--muted);margin-top:6px;margin-bottom:3px"><b style="color:var(--accent)">Force string</b></div><div class="xsd-tags">${info.stringPaths.map(p=>`<span class="xsd-tag xsd-string-tag">${esc(p)}</span>`).join('')}</div>`:''}
     </div>`;
   }catch(e){}
 }
 
-function toggleDataViewer(){
-  const a=document.getElementById('dataViewerArea');
-  a.style.display=a.style.display==='none'?'block':'none';
+// ── Dropdowns ──────────────────────────────────────────────────────────────
+function updDropdowns(){document.querySelectorAll('.fsel').forEach(el=>{const v=el.value;el.innerHTML='<option value="">-- Field --</option>';schema.forEach(f=>{const o=document.createElement('option');o.value=f.path;o.textContent=(f.arrayPath?'↳ ':'')+f.path+(f.type==='array_number'?' ⏱':'');el.appendChild(o)});el.value=v})}
+function updGB(){const s=document.getElementById('gbSel');s.innerHTML='<option value="">-- Pilih Field --</option>';schema.forEach(f=>{const o=document.createElement('option');o.value=f.path;o.textContent=(f.arrayPath?'↳ ':'')+f.path+' ('+f.type+')';s.appendChild(o)})}
+
+// ── WHERE mode ─────────────────────────────────────────────────────────────
+function setMode(m){filterMode=m;document.getElementById('modeAuto').className='btn'+(m==='auto'?' btn-accent':'');document.getElementById('modeManual').className='btn'+(m==='manual'?' btn-accent':'');document.getElementById('whereHint').style.display=m==='auto'?'block':'none';updDSL()}
+
+// ── Local filter rows ──────────────────────────────────────────────────────
+function addLF(a,f,o,v){addLFEx(a||'credits',f||'',o||'$eq',v||'')}
+function addLFEx(a,f,o,v){
+  const id=lfId++,c=document.getElementById('lfList'),d=document.createElement('div');d.className='frow';d.id='lf'+id;
+  d.innerHTML=`<button class="x" onclick="this.parentElement.remove();updDSL()">&times;</button>
+<div class="row">
+  <div><label>Array Path</label><input type="text" class="lf-arr" value="${esc(a)}" onchange="updDSL()"></div>
+  <div><label>Field</label><select class="fsel lf-f" onchange="updDSL()"></select></div>
+  <div style="flex:.7"><label>Op</label><select class="lf-o" onchange="updDSL()">${WHERE_OPS.map(x=>`<option value="${x}"${x===o?' selected':''}>${x}</option>`).join('')}</select></div>
+  <div style="flex:.7"><label>Value</label><input type="text" class="lf-v" value="${esc(v)}" onchange="updDSL()"></div>
+</div>`;
+  c.appendChild(d);updDropdowns();setTimeout(()=>{d.querySelector('.lf-f').value=f},0);
 }
 
-// ===================== Field Selectors =====================
-function refreshFieldSelectors(){
-  const options = currentSchema.map(f=>{
-    const prefix = f.arrayPath?'↳ ':'';
-    return `<option value="${f.path}">${prefix}${f.path} [${f.type}]</option>`;
-  }).join('');
-  document.querySelectorAll('.filter-field-select').forEach(s=>{const v=s.value;s.innerHTML='<option value="">-- field --</option>'+options;s.value=v;});
-  document.getElementById('gbFieldSelect').innerHTML='<option value="">-- pilih field --</option>'+options;
-  document.querySelectorAll('.agg-field-select').forEach(s=>{const v=s.value;s.innerHTML='<option value="">-- field --</option>'+options;s.value=v;});
+// ── WHERE rows ─────────────────────────────────────────────────────────────
+function addWF(f,o,v){addWFEx(f||'',o||'$eq',v||'')}
+function addWFEx(f,o,v){
+  const id=wfId++,c=document.getElementById('wfList'),d=document.createElement('div');d.className='frow';d.id='wf'+id;
+  d.innerHTML=`<button class="x" onclick="this.parentElement.remove();updDSL()">&times;</button>
+<div class="row">
+  <div><label>Field</label><select class="fsel wf-f" onchange="updDSL()"></select></div>
+  <div style="flex:.7"><label>Op</label><select class="wf-o" onchange="updDSL()">${WHERE_OPS.map(x=>`<option value="${x}"${x===o?' selected':''}>${x}</option>`).join('')}</select></div>
+  <div style="flex:.7"><label>Value</label><input type="text" class="wf-v" value="${esc(v)}" onchange="updDSL()"></div>
+</div>`;
+  c.appendChild(d);updDropdowns();setTimeout(()=>{d.querySelector('.wf-f').value=f},0);
 }
 
-function refreshLocalFilterArraySelect(){
-  const sel=document.getElementById('lfArraySelect');
-  const arrays=currentSchema.filter(f=>f.type==='array_object');
-  sel.innerHTML='<option value="">-- tidak ada --</option>'+arrays.map(a=>`<option value="${a.path}">${a.path} [array]</option>`).join('');
+// ── Group By ───────────────────────────────────────────────────────────────
+function addGB(p){if(!p)return;const id=gbId++,c=document.getElementById('gbList'),d=document.createElement('div');d.className='gb-item';d.id='gb'+id;d.setAttribute('data-p',p);d.innerHTML=`<span><span class="gb-idx"></span>${esc(p)}</span><div class="gb-acts"><button onclick="mvGB(this.closest('.gb-item'),-1)">▲</button><button onclick="mvGB(this.closest('.gb-item'),1)">▼</button><button class="x" onclick="this.closest('.gb-item').remove();reidx();updDSL()">&times;</button></div>`;c.appendChild(d);reidx();updDSL()}
+function addGBFromSel(){const s=document.getElementById('gbSel');if(s.value){addGB(s.value);s.value=''}}
+function reidx(){document.querySelectorAll('#gbList .gb-item').forEach((el,i)=>el.querySelector('.gb-idx').textContent=i+1)}
+function mvGB(el,d){if(d===-1&&el.previousElementSibling)el.parentNode.insertBefore(el,el.previousElementSibling);else if(d===1&&el.nextElementSibling)el.parentNode.insertBefore(el.nextElementSibling,el);reidx();updDSL()}
+
+// ── Aggregations ───────────────────────────────────────────────────────────
+function addAgg(f,o,a,p){addAggEx(f||'',o||'count',a||'',p||null)}
+function addAggEx(f,o,a,p){
+  const id=aggId++,c=document.getElementById('aggList'),d=document.createElement('div');d.className='frow';d.id='ag'+id;
+  const pn=p&&p.n!=null?p.n:6,pv=p&&p.value!=null?p.value:3,pc=p&&p.comparator?p.comparator:'$gte';
+  d.innerHTML=`<button class="x" onclick="this.parentElement.remove();updDSL()">&times;</button>
+<div class="row">
+  <div><label>Field</label><select class="fsel ag-f" onchange="onAggF(this)"></select></div>
+  <div style="flex:.8"><label>Op</label><select class="ag-o" onchange="onAggOp(this)">${AGG_OPS.map(x=>`<option value="${x}"${x===o?' selected':''}>${x}</option>`).join('')}</select></div>
+  <div style="flex:.8"><label>Alias</label><input type="text" class="ag-a" value="${esc(a)}" onchange="updDSL()"></div>
+</div>
+<div class="iparams" style="display:none">
+  <div><label class="ag-nlbl">n</label><input type="number" class="ag-pn" value="${pn}" min="1" max="48" onchange="updDSL()"></div>
+  <div><label>value</label><input type="number" class="ag-pv" value="${pv}" step="0.1" onchange="updDSL()"></div>
+  <div><label>comparator</label><select class="ag-pc" onchange="updDSL()">
+    <option value="$eq"${pc==='$eq'?' selected':''}>= eq</option>
+    <option value="$gte"${pc==='$gte'?' selected':''}>≥ gte</option>
+    <option value="$gt"${pc==='$gt'?' selected':''}>⟩ gt</option>
+    <option value="$lte"${pc==='$lte'?' selected':''}>≤ lte</option>
+    <option value="$lt"${pc==='$lt'?' selected':''}>⟨ lt</option>
+  </select></div>
+</div>`;
+  c.appendChild(d);updDropdowns();setTimeout(()=>{const fs=d.querySelector('.ag-f');fs.value=f;onAggF(fs);d.querySelector('.ag-o').value=o;onAggOp(d.querySelector('.ag-o'))},0);
+}
+function onAggF(s){const fi=schema.find(x=>x.path===s.value);if(fi&&fi.type==='array_number'){const op=s.closest('.frow').querySelector('.ag-o');if(op.value==='count')op.value='worst_last_n'}onAggOp(s.closest('.frow').querySelector('.ag-o'));updDSL()}
+function onAggOp(s){
+  const r=s.closest('.frow'),op=s.value,pm=r.querySelector('.iparams');
+  if(NEEDS_N.includes(op)){
+    pm.style.display='flex';
+    const hasVC=NEEDS_VAL_CMP.includes(op);
+    pm.children[1].style.display=hasVC?'block':'none';
+    pm.children[2].style.display=hasVC?'block':'none';
+    pm.children[0].querySelector('.ag-nlbl').textContent=op==='count_since'?'months':'n';
+  }else pm.style.display='none';
+  updDSL();
 }
 
-function getLocalFilterFieldOptions(){
-  const ap=localFilter.arrayPath;if(!ap)return'';
-  return currentSchema.filter(f=>f.arrayPath===ap&&f.path!==ap).map(f=>`<option value="${f.path}">${f.path.replace(ap+'.','')} [${f.type}]</option>`).join('');
-}
+// ── DSL builder ─────────────────────────────────────────────────────────────
+function parseV(v){if(v==='')return'';if(v==='true')return true;if(v==='false')return false;if(v==='null')return null;const n=Number(v);if(!isNaN(n)&&v!=='')return n;if(v.startsWith('[')){try{return JSON.parse(v)}catch(e){}}return v}
 
-// ===================== Local Filter =====================
-function onLocalFilterArrayChange(){
-  localFilter.arrayPath=document.getElementById('lfArraySelect').value;
-  localFilter.conditions=[]; lfIdCounter=0;
-  renderLocalFilterConditions(); updateDSL();
-}
-function addLocalFilterCondition(){
-  if(!localFilter.arrayPath){showToast('Pilih array terlebih dahulu','info');return;}
-  localFilter.conditions.push({id:lfIdCounter++,field:'',op:'$eq',value:''});
-  renderLocalFilterConditions();
-}
-function removeLocalFilterCondition(id){
-  localFilter.conditions=localFilter.conditions.filter(c=>c.id!==id);
-  renderLocalFilterConditions(); updateDSL();
-}
-function renderLocalFilterConditions(){
-  const container=document.getElementById('lfConditionsContainer');
-  const addBtn=document.getElementById('lfAddBtn');
-  if(!localFilter.arrayPath){container.innerHTML='';addBtn.style.display='none';return;}
-  addBtn.style.display='inline-flex';
-  const fieldOpts=getLocalFilterFieldOptions();
-  const opOpts=OPERATORS.map(o=>`<option value="${o.value}">${o.label}</option>`).join('');
-  container.innerHTML=localFilter.conditions.map(c=>{
-    const noVal=['$notnull','$null'].includes(c.op);
-    return`<div class="local-filter-row" data-id="${c.id}">
-      <div class="col" style="max-width:35%"><select class="lf-field-select" onchange="onLFChange(${c.id},'field',this.value)">
-        <option value="">-- field --</option>${fieldOpts}</select></div>
-      <div class="col" style="max-width:25%"><select onchange="onLFChange(${c.id},'op',this.value);renderLocalFilterConditions();updateDSL();">${opOpts}</select></div>
-      <div class="col" style="${noVal?'display:none':''}"><input type="text" placeholder="nilai..." value="${escapeHtml(c.value)}"
-        oninput="onLFChange(${c.id},'value',this.value);updateDSL();"></div>
-      <div class="col-auto"><button class="btn btn-red btn-icon" onclick="removeLocalFilterCondition(${c.id})"><i class="fas fa-times"></i></button></div>
-    </div>`;
-  }).join('');
-  container.querySelectorAll('.local-filter-row').forEach(row=>{
-    const id=parseInt(row.dataset.id);const c=localFilter.conditions.find(x=>x.id===id);if(!c)return;
-    row.querySelector('.lf-field-select').value=c.field;
-    row.querySelectorAll('select')[1].value=c.op;
-  });
-}
-function onLFChange(id,key,value){const c=localFilter.conditions.find(x=>x.id===id);if(c){c[key]=value;updateDSL();}}
-function clearLocalFilter(){localFilter={arrayPath:'',conditions:[]};document.getElementById('lfArraySelect').value='';renderLocalFilterConditions();updateDSL();}
-
-// ===================== Global Filters =====================
-function addFilter(){filters.push({id:filterIdCounter++,field:'',op:'$eq',value:''});renderFilters();}
-function removeFilter(id){filters=filters.filter(f=>f.id!==id);if(!filters.length)addFilter();else renderFilters();updateDSL();}
-function renderFilters(){
-  const container=document.getElementById('filtersContainer');
-  const options=currentSchema.map(f=>{const prefix=f.arrayPath?'↳ ':'';return`<option value="${f.path}">${prefix}${f.path} [${f.type}]</option>`;}).join('');
-  const opOptions=OPERATORS.map(o=>`<option value="${o.value}">${o.label}</option>`).join('');
-  container.innerHTML=filters.map(f=>{
-    const noVal=['$notnull','$null'].includes(f.op);
-    return`<div class="filter-row" data-id="${f.id}">
-      <div class="col" style="max-width:35%"><select class="filter-field-select" onchange="onFilterChange(${f.id},'field',this.value)">
-        <option value="">-- field --</option>${options}</select></div>
-      <div class="col" style="max-width:25%"><select onchange="onFilterChange(${f.id},'op',this.value);renderFilters();updateDSL();">${opOptions}</select></div>
-      <div class="col" style="${noVal?'display:none':''}"><input type="text" placeholder="nilai..." value="${escapeHtml(f.value)}"
-        oninput="onFilterChange(${f.id},'value',this.value);updateDSL();"></div>
-      <div class="col-auto"><button class="btn btn-red btn-icon" onclick="removeFilter(${f.id})"><i class="fas fa-times"></i></button></div>
-    </div>`;
-  }).join('');
-  container.querySelectorAll('.filter-row').forEach(row=>{
-    const id=parseInt(row.dataset.id);const f=filters.find(x=>x.id===id);if(!f)return;
-    row.querySelector('.filter-field-select').value=f.field;
-    row.querySelectorAll('select')[1].value=f.op;
-  });
-}
-function onFilterChange(id,key,value){const f=filters.find(x=>x.id===id);if(f){f[key]=value;updateDSL();}}
-
-// ===================== Group By =====================
-function addGroupBy(){
-  const sel=document.getElementById('gbFieldSelect');const val=sel.value;
-  if(!val){showToast('Pilih field terlebih dahulu','info');return;}
-  if(groupByFields.includes(val)){showToast('Field sudah ditambahkan','info');return;}
-  groupByFields.push(val);sel.value='';renderGroupByChips();updateDSL();
-}
-function removeGroupBy(field){groupByFields=groupByFields.filter(f=>f!==field);renderGroupByChips();updateDSL();}
-function renderGroupByChips(){
-  const c=document.getElementById('gbChips');
-  if(!groupByFields.length){c.innerHTML='<span style="color:var(--fg-muted);font-size:0.78rem;padding:4px 0">Belum ada field</span>';return;}
-  c.innerHTML=groupByFields.map(f=>`<span class="gb-chip">${f}<button onclick="removeGroupBy('${f}')"><i class="fas fa-times"></i></button></span>`).join('');
-}
-
-// ===================== Aggregations =====================
-function addAggregation(){
-  aggregations.push({id:aggIdCounter++,field:'',op:'sum',alias:'',params:{}});
-  renderAggregations();
-}
-function removeAggregation(id){
-  aggregations=aggregations.filter(a=>a.id!==id);
-  if(!aggregations.length)addAggregation();else renderAggregations();
-  updateDSL();
-}
-
-function renderAggregations(){
-  const container=document.getElementById('aggContainer');
-  const options=currentSchema.map(f=>{const prefix=f.arrayPath?'↳ ':'';return`<option value="${f.path}">${prefix}${f.path} [${f.type}]</option>`;}).join('');
-  const opOptions=AGG_OPS.map(o=>`<option value="${o.value}">${o.label}</option>`).join('');
-
-  container.innerHTML=aggregations.map(a=>{
-    const def = getOpDef(a.op);
-    const needsN = def.windowN;
-    const needsValue = def.needsValue;
-    const needsDate = def.dateWindow;
-    const n = a.params?.n||6;
-    const val = a.params?.value??'';
-    const dateField = a.params?.date_field||'';
-    const refDate = a.params?.ref_date||'';
-    const unit = a.params?.unit||'month';
-
-    const hasParams = needsN||needsValue||needsDate;
-
-    return`<div class="agg-row" data-id="${a.id}" style="border-radius:${hasParams?'var(--radius) var(--radius) 0 0':'var(--radius)'}">
-      <div class="col" style="max-width:30%"><select class="agg-field-select" onchange="onAggChange(${a.id},'field',this.value)">
-        <option value="">-- field --</option>${options}</select></div>
-      <div class="col" style="max-width:28%"><select onchange="onAggChange(${a.id},'op',this.value);renderAggregations();updateDSL();">${opOptions}</select></div>
-      <div class="col"><input type="text" placeholder="alias..." value="${escapeHtml(a.alias)}"
-        oninput="onAggChange(${a.id},'alias',this.value);updateDSL();"></div>
-      <div class="col-auto"><button class="btn btn-red btn-icon" onclick="removeAggregation(${a.id})"><i class="fas fa-times"></i></button></div>
-    </div>
-    ${hasParams?`<div class="agg-params-row" data-id="${a.id}">
-      ${needsN?`<div><label>N (index)</label><input type="number" value="${n}" min="1" max="24" style="width:70px"
-        oninput="onAggParam(${a.id},'n',this.value);updateDSL();"></div>`:''}
-      ${needsValue?`<div><label>Target value</label><input type="number" value="${val}" min="0" max="5" step="1" style="width:70px"
-        oninput="onAggParam(${a.id},'value',this.value);updateDSL();"></div>`:''}
-      ${needsDate?`
-      <div style="flex:1;min-width:120px"><label>date_field (path)</label><input type="text" placeholder="mis. Bulan" value="${escapeHtml(dateField)}"
-        oninput="onAggParam(${a.id},'date_field',this.value);updateDSL();"></div>
-      <div><label>ref_date</label><input type="date" value="${refDate}" style="width:150px"
-        oninput="onAggParam(${a.id},'ref_date',this.value);updateDSL();"></div>
-      <div><label>N</label><input type="number" value="${n}" min="1" style="width:60px"
-        oninput="onAggParam(${a.id},'n',this.value);updateDSL();"></div>
-      <div><label>Unit</label><select style="width:90px" onchange="onAggParam(${a.id},'unit',this.value);updateDSL();">
-        <option value="month"${unit==='month'?' selected':''}>month</option>
-        <option value="day"${unit==='day'?' selected':''}>day</option>
-        <option value="year"${unit==='year'?' selected':''}>year</option>
-      </select></div>`:''}
-    </div>`:''}`;
-  }).join('');
-
-  container.querySelectorAll('.agg-row').forEach(row=>{
-    const id=parseInt(row.dataset.id);const a=aggregations.find(x=>x.id===id);if(!a)return;
-    row.querySelector('.agg-field-select').value=a.field;
-    row.querySelectorAll('select')[1].value=a.op;
-  });
-}
-
-function onAggChange(id,key,value){const a=aggregations.find(x=>x.id===id);if(a){a[key]=value;if(key==='op')renderAggregations();updateDSL();}}
-function onAggParam(id,key,value){
-  const a=aggregations.find(x=>x.id===id);if(!a)return;
-  if(!a.params)a.params={};
-  if(key==='n')a.params.n=parseInt(value)||6;
-  else if(key==='value')a.params.value=parseFloat(value)||0;
-  else a.params[key]=value;
-  updateDSL();
-}
-
-// ===================== DSL Builder =====================
 function buildDSL(){
-  const dsl={dataset:currentDataset};
-
-  if(localFilter.arrayPath&&localFilter.conditions.length>0){
-    const lf={};
-    localFilter.conditions.forEach(c=>{
-      if(!c.field||!c.op)return;
-      if(!lf[c.field])lf[c.field]={};
-      if(c.op==='$notnull')lf[c.field]['$notnull']=true;
-      else if(c.op==='$null')lf[c.field]['$null']=true;
-      else if(c.op==='$in')lf[c.field]['$in']=c.value.split(',').map(v=>{const t=v.trim();const n=parseFloat(t);return isNaN(n)?t:n;});
-      else{const num=parseFloat(c.value);lf[c.field][c.op]=isNaN(num)?c.value:num;}
-    });
-    if(Object.keys(lf).length>0)dsl.localFilter={[localFilter.arrayPath]:lf};
-  }
-
-  const where={};
-  filters.forEach(f=>{
-    if(!f.field||!f.op)return;
-    if(!where[f.field])where[f.field]={};
-    if(f.op==='$notnull')where[f.field]['$notnull']=true;
-    else if(f.op==='$null')where[f.field]['$null']=true;
-    else if(f.op==='$in')where[f.field]['$in']=f.value.split(',').map(v=>{const t=v.trim();const n=parseFloat(t);return isNaN(n)?t:n;});
-    else{const num=parseFloat(f.value);where[f.field][f.op]=isNaN(num)?f.value:num;}
-  });
-  if(Object.keys(where).length>0)dsl.where=where;
-
-  if(groupByFields.length>0)dsl.groupBy=[...groupByFields];
-
-  const aggs=aggregations.filter(a=>a.field&&a.op).map(a=>{
-    const obj={field:a.field,op:a.op};
-    if(a.alias)obj.alias=a.alias;
-    const def=getOpDef(a.op);
-    const p={};
-    if(def.windowN&&a.params?.n)p.n=a.params.n;
-    if(def.needsValue&&a.params?.value!==undefined)p.value=a.params.value;
-    if(def.dateWindow){
-      if(a.params?.date_field)p.date_field=a.params.date_field;
-      if(a.params?.ref_date)p.ref_date=a.params.ref_date;
-      if(a.params?.n)p.n=a.params.n;
-      if(a.params?.unit)p.unit=a.params.unit;
-    }
-    if(Object.keys(p).length>0)obj.params=p;
-    return obj;
-  });
-  if(aggs.length>0)dsl.aggregations=aggs;
+  const dsl={dataset:curDS,filterMode};
+  const lf={};document.querySelectorAll('.frow[id^="lf"]').forEach(r=>{const a=r.querySelector('.lf-arr').value.trim(),f=r.querySelector('.lf-f').value,o=r.querySelector('.lf-o').value,v=r.querySelector('.lf-v').value;if(!a||!f)return;if(!lf[a])lf[a]={};if(!lf[a][f])lf[a][f]={};lf[a][f][o]=parseV(v)});if(Object.keys(lf).length)dsl.localFilter=lf;
+  const wh={};document.querySelectorAll('.frow[id^="wf"]').forEach(r=>{const f=r.querySelector('.wf-f').value,o=r.querySelector('.wf-o').value,v=r.querySelector('.wf-v').value;if(!f)return;if(!wh[f])wh[f]={};wh[f][o]=parseV(v)});if(Object.keys(wh).length)dsl.where=wh;
+  const gb=[];document.querySelectorAll('#gbList .gb-item').forEach(el=>gb.push(el.getAttribute('data-p')));if(gb.length)dsl.groupBy=gb;
+  const ag=[];document.querySelectorAll('.frow[id^="ag"]').forEach(r=>{const f=r.querySelector('.ag-f').value,o=r.querySelector('.ag-o').value,a=r.querySelector('.ag-a').value;if(!f)return;const agg={field:f,op:o,alias:a||(o+'_'+f.replace(/\./g,'_'))};if(NEEDS_N.includes(o)){const n=parseInt(r.querySelector('.ag-pn').value)||6;agg.params={n};if(NEEDS_VAL_CMP.includes(o)){agg.params.value=parseFloat(r.querySelector('.ag-pv').value)||0;agg.params.comparator=r.querySelector('.ag-pc').value}}ag.push(agg)});if(ag.length)dsl.aggregations=ag;
   return dsl;
 }
+function updDSL(){document.getElementById('dslP').textContent=smartJSON(buildDSL())}
 
-function updateDSL(){
-  document.getElementById('dslPreview').innerHTML=syntaxHighlight(JSON.stringify(buildDSL(),null,2));
-}
-
-// ===================== Execute =====================
-async function executeQuery(){
-  if(!currentDataset){showToast('Pilih dataset terlebih dahulu','error');return;}
-  const dsl=buildDSL();
-  if(!dsl.aggregations||!dsl.aggregations.length){showToast('Tambahkan minimal satu agregasi','error');return;}
-  switchTab('result',document.querySelectorAll('.tab')[1]);
-  document.getElementById('resultArea').innerHTML='<div style="text-align:center;padding:32px"><span class="spinner"></span> <span style="margin-left:8px;color:var(--fg-muted)">Mengeksekusi...</span></div>';
+// ── Execute ────────────────────────────────────────────────────────────────
+async function exec(){
+  const dsl=buildDSL();updDSL();
   try{
-    const results=await apiPost('/api/aggregate',dsl)||[];
-    if(!Array.isArray(results)||!results.length){
-      document.getElementById('resultArea').innerHTML='<div class="empty-state"><i class="fas fa-inbox"></i>Tidak ada data yang cocok</div>';
-    } else { renderResults(results); }
-    showToast('Query berhasil: '+results.length+' row(s)','success');
-  }catch(e){
-    document.getElementById('resultArea').innerHTML=`<div class="empty-state" style="color:var(--red)"><i class="fas fa-exclamation-triangle"></i>${escapeHtml(e.message)}</div>`;
-    showToast('Query gagal: '+e.message,'error');
-  }
+    const res=await fetch('/api/aggregate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(dsl)});
+    const txt=await res.text();
+    let data;try{data=JSON.parse(txt)}catch(e){data=txt}
+    if(!res.ok||typeof data==='string'){document.getElementById('resP').textContent='ERROR: '+data;renderTbl([]);document.getElementById('resBadge').textContent='Error';return}
+    document.getElementById('resP').textContent=smartJSON(data);
+    const arr=Array.isArray(data)?data:[];
+    renderTbl(arr);
+    document.getElementById('resBadge').textContent=arr.length+' row'+(arr.length!==1?'s':'');
+    stab(document.querySelectorAll('.tab-bar .tab')[2],'tTbl');
+  }catch(e){document.getElementById('resP').textContent='Fetch error: '+e.message}
 }
 
-function renderResults(results){
-  if(!Array.isArray(results)||!results.length)return;
-  const keys=Object.keys(results[0]);
-  let html='<div class="result-table-wrap"><table class="result-table"><thead><tr>';
-  keys.forEach(k=>{html+=`<th>${escapeHtml(k)}</th>`;});
-  html+='</tr></thead><tbody>';
-  results.forEach(row=>{
-    html+='<tr>';
-    keys.forEach(k=>{
-      const v=row[k];const isNum=typeof v==='number';const isNull=v===null||v===undefined;
-      let display=isNull?'<span style="color:var(--fg-muted);font-style:italic">null</span>':escapeHtml(formatValue(v));
-      html+=`<td class="${isNum?'num-cell':''} ${isNull?'null-cell':''}">${display}</td>`;
-    });
-    html+='</tr>';
-  });
-  html+='</tbody></table></div>';
-  document.getElementById('resultArea').innerHTML=html;
+function renderTbl(data){
+  const meta=document.getElementById('tblMeta'),wrap=document.getElementById('tblC');
+  if(!data.length){wrap.innerHTML='<div class="empty">No results</div>';meta.innerHTML='';return}
+  const keys=[...new Set(data.flatMap(r=>Object.keys(r)))];
+  const gbKeys=(buildDSL().groupBy||[]);
+  meta.innerHTML=`<div class="tbl-meta"><b>${data.length}</b> rows &nbsp;·&nbsp; <b>${keys.length}</b> kolom</div>`;
+  let h='<div class="tbl-wrap"><table class="rtable"><thead><tr>';
+  keys.forEach(k=>h+=`<th${gbKeys.includes(k)?' style="color:var(--green)"':''}>${esc(k)}</th>`);
+  h+='</tr></thead><tbody>';
+  data.forEach(row=>{h+='<tr>';keys.forEach(k=>{let v=row[k];if(v===null||v===undefined)v='—';else if(typeof v==='number')v=Number.isInteger(v)?v.toLocaleString('id-ID'):parseFloat(v.toFixed(6)).toString();h+=`<td>${esc(String(v))}</td>`});h+='</tr>'});
+  h+='</tbody></table></div>';wrap.innerHTML=h;
 }
 
-function formatValue(v){
-  if(typeof v==='number')return Number.isInteger(v)?v.toString():v.toFixed(4).replace(/\.?0+$/,'');
-  return String(v);
+// ── Presets ────────────────────────────────────────────────────────────────
+function clearAll(){['lfList','wfList','aggList','gbList'].forEach(id=>document.getElementById(id).innerHTML='');lfId=wfId=aggId=gbId=0}
+function preset(n){
+  if(!curDS){showErr('Pilih dataset terlebih dahulu');return}
+  clearAll();
+  setTimeout(()=>{
+    switch(n){
+      case'avg_bal_dept':addGB('department');addAggEx('credits.outstanding_balance','avg','avg_balance');break;
+      case'cc_city':addLFEx('credits','credits.product_type','$eq','credit card');addGB('city');addAggEx('credits.initial_limit','sum','total_limit');addAggEx('credits.account_no','count','num_cc');break;
+      case'max_delq':addAggEx('credits.delinquency','max','max_delq');break;
+      case'worst_delq6':addAggEx('credits.last_24_delq_hist','worst_last_n','worst_delq_6m',{n:6});break;
+      case'max_coll3':addAggEx('credits.last_24_coll_hist','worst_last_n','max_coll_3m',{n:3});break;
+      case'ever_coll3':addAggEx('credits.last_24_coll_hist','ever_has_last_n','ever_coll_gte3_3m',{n:3,value:3,comparator:'$gte'});break;
+      case'recent_acct':addAggEx('credits.open_date','count_since','akun_baru_3m',{n:3});break;
+      case'salary_by_dept':addGB('department');addGB('city');addAggEx('salary','avg','avg_salary');addAggEx('salary','sum','total_salary');addAggEx('name','count','headcount');break;
+      case'multi_ts':addGB('department');addGB('name');addAggEx('credits.last_24_delq_hist','worst_last_n','worst_delq_3m',{n:3});addAggEx('credits.last_24_delq_hist','worst_last_n','worst_delq_6m',{n:6});addAggEx('credits.last_24_coll_hist','worst_last_n','max_coll_3m',{n:3});addAggEx('credits.last_24_coll_hist','ever_has_last_n','ever_bad_6m',{n:6,value:3,comparator:'$gte'});addAggEx('credits.last_24_coll_hist','count_last_n','cnt_coll4_3m',{n:3,value:4,comparator:'$gte'});addAggEx('credits.delinquency','max','current_max_delq');break;
+    }
+    setTimeout(updDSL,60);
+  },80);
 }
 
-// ===================== Presets =====================
-const PRESETS=[
-  {name:'Avg outstanding/dept',lf:{arrayPath:'',conditions:[]},filters:[],gb:['department'],
-    aggs:[{field:'credits.outstanding_balance',op:'avg',alias:'avg_outstanding',params:{}}]},
-  {name:'CC limit/kota',lf:{arrayPath:'credits',conditions:[{id:0,field:'credits.product_type',op:'$eq',value:'credit card'}]},
-    filters:[],gb:['city'],aggs:[{field:'credits.initial_limit',op:'sum',alias:'total_cc_limit',params:{}},{field:'credits.account_no',op:'count',alias:'count_cc',params:{}}]},
-  {name:'Max delinquency',lf:{arrayPath:'',conditions:[]},filters:[],gb:[],
-    aggs:[{field:'credits.delinquency',op:'max',alias:'max_delinquency',params:{}}]},
-  {name:'Worst delq last 6mo',lf:{arrayPath:'',conditions:[]},filters:[],gb:['name'],
-    aggs:[{field:'credits.last_24_delq_hist',op:'worst_last_n',alias:'worst_delq_6mo',params:{n:6}}]},
-  {name:'Max coll last 3mo',lf:{arrayPath:'',conditions:[]},filters:[],gb:['name'],
-    aggs:[{field:'credits.last_24_coll_hist',op:'max_last_n',alias:'max_coll_3mo',params:{n:3}}]},
-  {name:'Ever coll≥3 last 3mo',lf:{arrayPath:'',conditions:[]},filters:[],gb:['name','department'],
-    aggs:[{field:'credits.last_24_coll_hist',op:'ever_has_last_n',alias:'ever_bad_3mo',params:{n:3,value:3}}]},
-  {name:'Active loans/dept',lf:{arrayPath:'credits',conditions:[{id:0,field:'credits.loan_status',op:'$eq',value:'active'}]},
-    filters:[],gb:['department'],aggs:[{field:'credits.outstanding_balance',op:'sum',alias:'active_os',params:{}},{field:'credits.account_no',op:'count',alias:'active_count',params:{}}]},
-];
-
-function loadPreset(i){
-  if(!currentDataset){
-    // Try to load employees sample
-    selectDataset('employees','builtin').then(()=>setTimeout(()=>applyPreset(i),200));
-  } else { applyPreset(i); }
-}
-function applyPreset(i){
-  const p=PRESETS[i];
-  localFilter.arrayPath=p.lf.arrayPath;
-  localFilter.conditions=p.lf.conditions.map(c=>({...c,id:lfIdCounter++}));
-  document.getElementById('lfArraySelect').value=p.lf.arrayPath;
-  renderLocalFilterConditions();
-  filters=p.filters.map(f=>({...f,id:filterIdCounter++}));
-  if(!filters.length)filters.push({id:filterIdCounter++,field:'',op:'$eq',value:''});
-  renderFilters();
-  groupByFields=[...p.gb];renderGroupByChips();
-  aggregations=p.aggs.map(a=>({...a,id:aggIdCounter++,params:a.params||{}}));
-  if(!aggregations.length)aggregations.push({id:aggIdCounter++,field:'',op:'sum',alias:'',params:{}});
-  renderAggregations();updateDSL();
-  showToast('Preset: '+p.name,'info');
-}
-
-// ===================== Tabs =====================
-function switchTab(tab,btn){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('dslPanel').style.display=tab==='dsl'?'block':'none';
-  document.getElementById('resultPanel').style.display=tab==='result'?'block':'none';
-}
-
-// ===================== Syntax Highlight =====================
-function syntaxHighlight(json){
-  if(!json)return'';
-  json=escapeHtml(json);
-  return json.replace(/("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(\.\d+)?([eE][+-]?\d+)?)/g,function(match){
-    let cls='num';
-    if(/^"/.test(match)){if(/:$/.test(match)){cls='key';return`<span class="${cls}">${match.slice(0,-1)}</span>:`;}else cls='str';}
-    return`<span class="${cls}">${match}</span>`;
-  });
-}
-
-// ===================== Utilities =====================
-function escapeHtml(s){return typeof s!=='string'?String(s):s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-
-function showToast(msg,type){
-  const c=document.getElementById('toastContainer');
-  const t=document.createElement('div');
-  t.className='toast toast-'+(type||'info');
-  const icon=type==='success'?'check-circle':type==='error'?'exclamation-circle':'info-circle';
-  t.innerHTML=`<i class="fas fa-${icon}"></i> ${escapeHtml(msg)}`;
-  c.appendChild(t);
-  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity 0.3s';setTimeout(()=>t.remove(),300);},3500);
-}
+document.addEventListener('input',updDSL);
+document.addEventListener('change',updDSL);
+init();
 </script>
 </body>
 </html>

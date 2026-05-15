@@ -1,150 +1,97 @@
 # Visual Aggregator — `gator`
 
-SQL-like aggregation engine untuk JSON dan XML, tanpa schema yang ditetapkan terlebih dahulu.
-Dirancang untuk kebutuhan analitik data kredit, tapi bersifat **generic** dan bisa dipakai untuk format JSON/XML apapun.
-
----
-
-## Daftar Isi
-
-1. [Fitur](#fitur)
-2. [Arsitektur & Struktur Direktori](#arsitektur--struktur-direktori)
-3. [Cara Menjalankan](#cara-menjalankan)
-4. [Konfigurasi (`config.yml`)](#konfigurasi-configyml)
-5. [DSL — Bahasa Query](#dsl--bahasa-query)
-6. [Aggregation Operators](#aggregation-operators)
-7. [Format Data](#format-data)
-   - [JSON](#json)
-   - [XML — Konvensi Representasi](#xml--konvensi-representasi)
-   - [XSD Hints (Opsi B)](#xsd-hints-opsi-b)
-8. [Desain Engine](#desain-engine)
-   - [Two-Pass Aggregation](#two-pass-aggregation)
-   - [Nested Array (Multi-Level)](#nested-array-multi-level)
-   - [Array Path Derivation](#array-path-derivation)
-   - [Date-Field Window Filtering](#date-field-window-filtering)
-9. [HTTP API](#http-api)
-10. [Frontend](#frontend)
-11. [Test Suite](#test-suite)
-12. [Keputusan Desain yang Didiskusikan](#keputusan-desain-yang-didiskusikan)
-
----
-
-## Fitur
-
-| Kategori | Kemampuan |
-|---|---|
-| **Aggregasi** | `sum`, `avg`, `min`, `max`, `count`, `count_distinct` |
-| **Window (index)** | `worst_last_n`, `max_last_n`, `ever_has_last_n`, `count_last_n`, `sum_last_n` |
-| **Window (tanggal)** | `max`/`min` + `date_field` param, `count_date_last_n` dengan `unit: month\|day\|year` |
-| **Grouping** | `GROUP BY` satu atau lebih field (dot-notation) |
-| **Filter** | `WHERE` global, `localFilter` per-array, operator: `$eq $ne $gt $gte $lt $lte $in $contains $notnull $null` |
-| **Nested array** | Aggregasi rekursif sampai kedalaman tak terbatas (N level) |
-| **Format input** | JSON, XML (lossless), XSD hints (opsional) |
-| **Schema** | Auto-detect dari record pertama — tidak perlu mendefinisikan schema sebelumnya |
-| **Frontend** | Visual builder HTML/JS, upload drag-drop, DSL preview, hasil tabel |
-
----
-
-## Arsitektur & Struktur Direktori
-
-```
-aggregator/
-├── main.go                        # HTTP server, routing, startup
-├── config.yml                     # Konfigurasi server
-├── go.mod                         # Go module (stdlib only, no external deps)
-│
-├── config/
-│   ├── config.go                  # YAML loader (stdlib, no external deps)
-│   └── config_test.go
-│
-├── gator/                         # Engine package — inti agregasi
-│   ├── gator.go                   # Aggregate(), Store, AggregateRequest, klasifikasi level
-│   ├── schema.go                  # DetectSchema(), GetFieldValue(), NavigateToParent(), DeepCopyMap()
-│   ├── filter.go                  # EvaluateWhere(), ApplyLocalFilters()
-│   ├── compute.go                 # ComputeAggregation(), AggregateArrayField(), CrossRecordOp()
-│   ├── gator_test.go              # Test engine: pefindo, employees, credit DSL, Dewi, nested
-│   │
-│   ├── ingest/                    # Parser format data
-│   │   ├── xml.go                 # ParseXML(), ParseXMLMany(), XMLOptions + XSDHints
-│   │   ├── xsd.go                 # ParseXSD(), XSDHints (StringPaths, ArrayPaths)
-│   │   ├── xml_test.go            # 14 unit test parser XML
-│   │   ├── xsd_test.go            # 4 test XSD: parse, force-array, string-no-coerce, merge
-│   │   └── xml_aggregate_test.go  # End-to-end: ideb.xml + tuxml.xml → Aggregate()
-│   │
-│   └── samples/
-│       └── samples.go             # Built-in dataset "employees" (9 orang, nested credits[])
-│
-└── static/
-    └── index.html                 # Frontend single-file (HTML + CSS + JS)
-```
-
-**Prinsip arsitektur:**
-- `gator/` — murni engine, tidak tahu apa-apa soal HTTP, format file, atau domain spesifik
-- `gator/ingest/` — konversi format → `[]interface{}`, tidak tahu apa-apa soal aggregasi
-- `gator/samples/` — data demo, terpisah dari engine agar engine tidak punya dependency domain
-- `main.go` — wiring: HTTP ↔ engine ↔ ingest
-- Zero external dependencies — hanya Go standard library
+SQL-like aggregation engine untuk JSON dan XML, tanpa schema yang ditetapkan terlebih dahulu. Dirancang untuk analitik data kredit, tapi bersifat **generic** untuk format JSON/XML apapun.
 
 ---
 
 ## Cara Menjalankan
 
 ```bash
-# Clone / salin file ke direktori
-cd aggregator
-
-# Jalankan server (default: port 8888)
-go run main.go
-
-# Atau dengan config custom
-go run main.go myconfig.yml
-
-# Akses frontend
-open http://localhost:8888
-
-# Jalankan test
-go test ./...
+go run main.go              # pakai config.yml di direktori saat ini
+go run main.go myconfig.yml # pakai config custom
+go test ./...               # jalankan semua test
 ```
 
-Server akan otomatis mendaftarkan dataset built-in `employees` jika `enable_samples: true` di config.
+Buka `http://localhost:8888` setelah server berjalan.
+
+---
+
+## Struktur Direktori
+
+```
+aggregator/
+├── main.go                        # HTTP server, routing, startup
+├── config.yml                     # konfigurasi server
+├── go.mod                         # Go module (stdlib only, zero external deps)
+│
+├── config/
+│   ├── config.go                  # YAML loader (stdlib only)
+│   └── config_test.go
+│
+├── gator/                         # engine package — inti agregasi
+│   ├── gator.go                   # Aggregate(), Store, klasifikasi level
+│   ├── schema.go                  # DetectSchemaFromSample(), GetFieldValue()
+│   ├── filter.go                  # EvaluateWhere(), ApplyLocalFilters()
+│   ├── compute.go                 # ComputeAggregation(), weighted avg
+│   ├── cache.go                   # PERF-01/02/03/04 — transparan dalam Store
+│   ├── gator_test.go              # unit tests
+│   ├── cache_test.go              # correctness + cache invalidation + concurrent
+│   ├── bench_test.go              # benchmark suite
+│   ├── memleak_test.go            # memory leak detection
+│   ├── fuzz_test.go               # fuzz testing
+│   ├── load_test.go               # load + concurrency tests
+│   │
+│   ├── ingest/
+│   │   ├── xml.go                 # lossless XML → map[string]interface{}
+│   │   ├── xsd.go                 # XSD hint parser (opsional, untuk XML)
+│   │   ├── xml_test.go
+│   │   ├── xsd_test.go
+│   │   └── xml_aggregate_test.go  # end-to-end: parse XML → Aggregate
+│   │
+│   └── samples/
+│       └── samples.go             # built-in dataset "employees"
+│
+└── static/
+    └── index.html                 # frontend single-file (HTML + CSS + JS)
+```
+
+---
+
+## API
+
+Satu-satunya API yang perlu diketahui:
+
+```go
+store := gator.NewStore()
+store.Register("mydata", data)          // []interface{} dari JSON atau XML
+rows, err := gator.Aggregate(store, req)
+```
+
+Tidak ada konfigurasi, tidak ada mode opsional. Semua optimasi performa aktif otomatis di dalam `NewStore()` dan `Aggregate()` — engine mendeteksi karakteristik query dan memilih code path terbaik.
 
 ---
 
 ## Konfigurasi (`config.yml`)
 
 ```yaml
-# TCP port server
 port: 8888
-
-# Direktori web root (berisi index.html)
 static_dir: static
-
-# true = daftarkan dataset built-in "employees"
-enable_samples: true
-
-# true = log setiap HTTP request
+enable_samples: true   # daftarkan dataset built-in "employees"
 log_requests: false
 
-# Dataset file yang di-load saat startup
-# Format auto-detect dari ekstensi: .json → JSON, .xml → XML
 datasets:
   - name: ideb
     file: data/ideb.xml
-  - name: pefindo
-    file: data/pefindo.json
+    xsd_file: data/ideb.xsd   # opsional — untuk XML saja
+  - name: kredit
+    file: data/kredit.json
 ```
-
-Config parser ditulis dengan `bufio.Scanner` (tanpa library YAML eksternal) dan mendukung:
-- Key-value di level root
-- List `datasets:` dengan sub-key `name` dan `file`
-- Komentar inline (`# ...`)
-- Fallback ke nilai default jika key tidak ada
 
 ---
 
 ## DSL — Bahasa Query
 
-Request body ke `POST /api/aggregate`:
+`POST /api/aggregate` dengan body JSON:
 
 ```json
 {
@@ -157,35 +104,19 @@ Request body ke `POST /api/aggregate`:
   },
 
   "where": {
-    "department": { "$eq": "IT" },
-    "salary": { "$gte": 20000000 }
+    "department": { "$eq": "IT" }
   },
 
   "groupBy": ["department", "city"],
 
   "aggregations": [
-    { "field": "salary", "op": "sum", "alias": "total_salary" },
-    {
-      "field": "credits.outstanding_balance",
-      "op": "sum",
-      "alias": "total_os"
-    },
+    { "field": "salary",                       "op": "sum",  "alias": "total_salary" },
+    { "field": "credits.outstanding_balance",  "op": "avg",  "alias": "avg_os" },
     {
       "field": "FasilitasList.Fasilitas.RiwayatKolektibilitas.HariTunggakan",
       "op": "max",
       "alias": "worst_dpd_3m",
-      "params": {
-        "date_field": "Bulan",
-        "ref_date":   "2026-04-30",
-        "n":          3,
-        "unit":       "month"
-      }
-    },
-    {
-      "field": "credits.open_date",
-      "op": "count_date_last_n",
-      "alias": "new_acc_3m",
-      "params": { "n": 3, "ref_date": "2026-04-30", "unit": "month" }
+      "params": { "date_field": "Bulan", "ref_date": "2026-04-30", "n": 3, "unit": "month" }
     }
   ]
 }
@@ -193,72 +124,42 @@ Request body ke `POST /api/aggregate`:
 
 ### `localFilter`
 
-Filter elemen di dalam array **sebelum** aggregasi. Shape:
-```
-{ "arrayPath": { "arrayPath.fieldName": { "$op": value } } }
-```
-
-Record parent yang arraynya kosong setelah filter **tetap muncul** di hasil (ghost row) dengan nilai 0/null untuk field array-level.
+Filter elemen di dalam array **sebelum** aggregasi. Record parent yang arraynya kosong setelah filter **tetap muncul** di hasil dengan nilai `0`/`null` (ghost row).
 
 ### `where`
 
-Filter terhadap record parent **setelah** local filter. Field path mendukung dot-notation.
+Filter terhadap record parent. Operator: `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, `$in`, `$contains`, `$notnull`, `$null`.
 
 ### `groupBy`
 
-Array field path. Aggregasi tanpa groupBy menghasilkan satu baris (`__all__`).
+Field path dapat mengacu ke field parent maupun field di dalam array:
+- `["department"]` → standard mode, satu baris per department
+- `["department", "credits.product_type"]` → explode mode, satu baris per (department, product_type)
+
+Engine mendeteksi mode secara otomatis.
 
 ### `aggregations`
 
-Setiap entri: `{ field, op, alias, params }`. `alias` opsional (default: `op_field_underscored`). `params` berisi parameter operator-spesifik.
-
----
-
-## Aggregation Operators
-
-### Scalar (berlaku untuk field apapun)
-
-| Op | Keterangan |
-|---|---|
-| `sum` | Jumlah nilai numerik |
-| `avg` | Rata-rata |
-| `min` | Nilai minimum |
-| `max` | Nilai maksimum. Jika `params.date_field` diisi → filter elemen berdasarkan window tanggal sebelum mencari max |
-| `count` | Jumlah baris/elemen |
-| `count_distinct` | Jumlah nilai unik |
-
-### Window — berbasis index array
-
-Beroperasi pada field bertipe array numerik (mis. `last_24_delq_hist = [0, 0, 30, 45, ...]`). "Last N" artinya N elemen terakhir berdasarkan posisi index.
-
-| Op | Params | Keterangan |
+| Op | Keterangan | Params |
 |---|---|---|
-| `worst_last_n` | `n` | MAX dari N elemen terakhir array |
-| `max_last_n` | `n` | Alias untuk `worst_last_n` |
-| `ever_has_last_n` | `n`, `value` | 1.0 jika `value` muncul di N elemen terakhir, 0.0 jika tidak |
-| `count_last_n` | `n`, `value` | Jumlah array di mana `value` muncul di N elemen terakhir |
-| `sum_last_n` | `n` | Jumlah N elemen terakhir |
+| `sum`, `avg`, `min`, `max` | Scalar ops | `max`/`min` mendukung `date_field` |
+| `count`, `count_distinct` | Hitung | — |
+| `worst_last_n` / `max_last_n` | Max N elemen terakhir array numerik (by index) | `n` |
+| `ever_has_last_n` | 1 jika nilai ada di N elemen terakhir | `n`, `value` |
+| `count_last_n` | Jumlah array yang punya nilai di N terakhir | `n`, `value` |
+| `sum_last_n` | Jumlah N elemen terakhir | `n` |
+| `count_date_last_n` | Hitung string tanggal dalam window | `n`, `unit`, `ref_date` |
 
-### Window — berbasis tanggal
+**Date window params:**
 
-Beroperasi pada field string tanggal di dalam array of objects. Filter elemen berdasarkan window tanggal, baru aggregate nilai target.
-
-| Op | Params | Keterangan |
+| Param | Default | Keterangan |
 |---|---|---|
-| `max` + `date_field` | `date_field`, `n`, `ref_date`, `unit` | MAX field target dari elemen yang tanggalnya dalam window |
-| `min` + `date_field` | idem | MIN dengan filter tanggal |
-| `count_date_last_n` | `n`, `ref_date`, `unit` | Hitung string tanggal yang masuk dalam window |
+| `date_field` | — | Nama field tanggal dalam element array, mis. `"Bulan"` |
+| `n` | 6 | Jumlah periode |
+| `ref_date` | today | Tanggal referensi `YYYY-MM-DD` |
+| `unit` | `"month"` | `"month"` \| `"day"` \| `"year"` |
 
-**Params untuk date window:**
-
-| Param | Tipe | Default | Keterangan |
-|---|---|---|---|
-| `date_field` | string | — | Nama field tanggal dalam element array, mis. `"Bulan"` |
-| `n` | int | 6 | Jumlah periode |
-| `ref_date` | string `YYYY-MM-DD` | today | Tanggal referensi |
-| `unit` | `"month"` \| `"day"` \| `"year"` | `"month"` | Satuan periode |
-
-Format tanggal yang didukung: `YYYY-MM-DD` dan `YYYY-MM` (partial, diperlakukan sebagai tanggal pertama bulan itu).
+Format tanggal yang didukung: `YYYY-MM-DD` dan `YYYY-MM`.
 
 ---
 
@@ -266,163 +167,79 @@ Format tanggal yang didukung: `YYYY-MM-DD` dan `YYYY-MM` (partial, diperlakukan 
 
 ### JSON
 
-Upload `application/json`. Struktur apapun yang valid:
-- Array of objects → langsung digunakan
+- Array of objects → digunakan langsung
 - Single object → di-wrap otomatis jadi `[object]`
+- **JSON Schema tidak diperlukan** — JSON sudah self-describing. Nilai `750` sudah `float64`, `"01"` sudah `string`, `[]` sudah array. Tidak ada ambiguitas tipe yang perlu diselesaikan oleh schema eksternal.
 
-### XML — Konvensi Representasi
+### XML — Konvensi Lossless
 
-Gator mengkonversi XML ke `map[string]interface{}` menggunakan konvensi **lossless** berikut:
+| Kasus | XML | Hasil Go |
+|---|---|---|
+| Pure text | `<Score>750</Score>` | `"Score": 750` |
+| Leading zero | `<Code>01</Code>` | `"Code": "01"` (string) |
+| ID panjang >15 digit | `<NIK>3201...</NIK>` | `"NIK": "3201..."` (string) |
+| Boolean | `<Active>true</Active>` | `"Active": true` |
+| Empty | `<Note/>` | `"Note": null` |
+| Text + attribute | `<loanid status="active">123</loanid>` | `"loanid": {"@status":"active","#text":123}` |
+| Attribute only | `<Status active="true"/>` | `"Status": {"@active":true}` |
+| Tag muncul ≥2× | `<TL>…</TL><TL>…</TL>` | `"TL": [{…},{…}]` (array) |
+| Tag muncul 1× | `<Score>…</Score>` | `"Score": {…}` (scalar) |
 
-| Kasus XML | Hasil Go |
-|---|---|
-| `<Score>750</Score>` | `"Score": 750` (coerce ke number) |
-| `<Code>01</Code>` | `"Code": "01"` (leading zero → tetap string) |
-| `<NIK>3201234567890001</NIK>` | `"NIK": "3201234567890001"` (>15 digit → tetap string, hindari float64 precision loss) |
-| `<Active>true</Active>` | `"Active": true` (bool) |
-| `<Note/>` | `"Note": null` |
-| `<loanid status="active">123</loanid>` | `"loanid": {"@status":"active","#text":123}` |
-| `<Status active="true"/>` | `"Status": {"@active":true}` |
-| Tag muncul ≥2x dalam satu parent | `"TradeLine": [{...}, {...}]` (array) |
-| Tag muncul 1x dalam satu parent | `"Score": {...}` (scalar/map) |
-| Namespace prefix | Go's decoder meresolve ke URI, local name dipertahankan |
+Single-item container (`<Scores><Score>…</Score></Scores>`) menghasilkan `Score` sebagai scalar bukan array — gunakan XSD hints untuk memaksanya jadi array.
 
-**Prefix key conventions:**
-- Attribute → `"@attrName": value`
-- Text content (ketika ada attr/child) → `"#text": value`
+### XSD Hints (opsional, untuk XML saja)
 
-**Force-array rule:** Tag di-force menjadi `[]interface{}` **hanya jika** tag tersebut muncul ≥2 kali dalam satu parent, atau jika XSD menyatakan `maxOccurs="unbounded"`.
-
-**Konsekuensi single-item container:** Dokumen XML dengan `<Scores><Score>...</Score></Scores>` (satu Score) menghasilkan `Score` sebagai map, bukan array. Dokumen lain dengan dua Score menghasilkan array. Ini bisa menyebabkan schema inkonsisten antar dokumen — gunakan XSD hints untuk mengatasi ini.
-
-### XSD Hints (Opsi B)
-
-XSD bersifat **opsional**. Tanpanya, engine tetap berjalan dengan heuristik. Dengan XSD, dua hal ditangani lebih akurat:
-
-**1. Force-array pada single-item container**
-
-```xml
-<!-- XSD -->
-<xs:element name="TradeLine" maxOccurs="unbounded"/>
-
-<!-- XML dengan 1 TradeLine -->
-<!-- Tanpa XSD: "TradeLine": {...} (scalar) -->
-<!-- Dengan XSD: "TradeLine": [{...}] (array) ✓ -->
+```bash
+# Upload XML lalu XSD-nya
+curl -X POST /api/upload -H "Content-Type: application/xml" --data-binary @data.xml
+curl -X POST "/api/upload/xsd?dataset=uploaded_xxx" -H "Content-Type: application/xml" --data-binary @schema.xsd
 ```
 
-**2. Mencegah coercion field yang secara domain adalah string**
-
-```xml
-<!-- XSD -->
-<xs:element name="ZipCode" type="xs:string"/>
-
-<!-- XML -->
-<ZipCode>10001</ZipCode>
-<!-- Tanpa XSD: 10001 (float64) — mungkin salah untuk filter $eq "10001" -->
-<!-- Dengan XSD: "10001" (string) ✓ -->
-```
-
-XSD types yang diklasifikasikan sebagai string: `xs:string`, `xs:normalizedString`, `xs:token`, `xs:date`, `xs:dateTime`, `xs:anyURI`, `xs:hexBinary`, dan lainnya.
-
-XSD types yang tetap dicoerce ke number: `xs:integer`, `xs:decimal`, `xs:float`, `xs:double`, `xs:long`, dll.
+XSD menyelesaikan dua masalah yang tidak bisa diselesaikan heuristik:
+1. **Force-array single-item** — `maxOccurs="unbounded"` → selalu `[]interface{}` meski hanya 1 child
+2. **Protect string fields** — `type="xs:string"` → tidak di-coerce ke number (mis. `ZipCode: "10001"` bukan `10001`)
 
 ---
 
 ## Desain Engine
 
-### Two-Pass Aggregation
+### Transparant Auto-Selection
 
-**Masalah:** Query yang mengandung field dari level parent (mis. `summary.totalLimit`) dan field dari dalam array (mis. `detailedFacilities.limit`) tidak bisa diselesaikan dengan naive flattening. Flattening menduplikasi parent row sebanyak N child, sehingga `SUM(parent.field)` terhitung N kali.
+`Aggregate()` mendeteksi karakteristik DSL dan memilih code path optimal secara otomatis:
 
-**Solusi:** Dua pass terpisah per grup.
+| Kondisi query | Path yang dipilih |
+|---|---|
+| Selalu | **PERF-01**: schema dari cache per-dataset |
+| Selalu | **PERF-02**: path split (`.`) dari cache per-string |
+| `groupBy` mengandung array field | **PERF-03**: COW explode (8.8× lebih cepat dari DeepCopy) |
+| `localFilter` hadir | **PERF-04**: lazy copy — hanya record yang punya target array |
+
+### Two-Pass Aggregation (Standard Mode)
+
+Mencegah double-counting ketika query mencampur field parent dan field array:
 
 ```
-Pass 1 — parent-level:
-  Kumpulkan nilai field dari records langsung.
-  SUM(summary.totalLimit) → [100_000_000] → result: 100_000_000 ✓
-
-Pass 2 — array-level:
-  Per record: masuk ke array, aggregate field target → scalar
-  Per grup: combine scalars dengan CrossRecordOp
-  SUM(detailedFacilities.limit) → per record: [20M, 80M] → 100M → result: 100_000_000 ✓
+Pass 1 — parent fields:   SUM(salary)  → nilai dari record langsung
+Pass 2 — array fields:    SUM(credits.balance) → per record → combine antar group
 ```
 
 ### Nested Array (Multi-Level)
 
-Untuk field seperti `FasilitasList.Fasilitas.RiwayatKolektibilitas.HariTunggakan` (2 level array), engine menggunakan `aggregateNestedField` yang rekursif:
+Path seperti `FasilitasList.Fasilitas.RiwayatKolektibilitas.HariTunggakan` di-detect otomatis dari schema. Engine melakukan recursive descent: outer array → per elemen → inner array → collect values → aggregate.
+
+### Explode Mode
+
+Ketika `groupBy` mengandung field dari dalam array (mis. `credits.product_type`), engine melakukan explode: setiap credit element menjadi satu flat row. Field parent di-deduplikasi sebelum diagregasi sehingga `AVG(salary)` tidak terhitung N× per credit.
+
+### Weighted Average
+
+`avg` menggunakan akumulator `(sum, count)` per record yang di-combine dengan benar antar group:
 
 ```
-Per record (satu debtor):
-  Masuk ke Fasilitas[]:
-    Untuk tiap Fasilitas:
-      Masuk ke RiwayatKolektibilitas[]:
-        Filter elemen berdasarkan date_field jika ada
-        Collect HariTunggakan → [0, 0, 35]
-        → computeAggregation("max") = 35           ← per-Fasilitas scalar
-    Combine per-Fasilitas: max(35, 45) = 45         ← per-record scalar
-  Combine per-record: max(45) = 45                  ← group result
+Alice: 1 credit  balance=0   → accum(0, 1)
+Bob:   3 credits balance=100 → accum(300, 3)
+Total avg = (0+300) / (1+3) = 75  ← benar, bukan mean-of-means (50)
 ```
-
-### Array Path Derivation
-
-Engine **tidak memerlukan** `arrayPath` eksplisit di DSL. Ia menderive level eksekusi secara otomatis dari schema yang dideteksi:
-
-```
-Field path: "FasilitasList.Fasilitas.RiwayatKolektibilitas.HariTunggakan"
-
-Prefix walk:
-  "FasilitasList"                                 → type: object      → skip
-  "FasilitasList.Fasilitas"                       → type: array_object → ancestor[0]
-  "FasilitasList.Fasilitas.RiwayatKolektibilitas" → type: array_object → ancestor[1]
-  "...HariTunggakan"                              → type: number      → leaf
-
-arrayAncestors = ["FasilitasList.Fasilitas",
-                  "FasilitasList.Fasilitas.RiwayatKolektibilitas"]
-level = levelNested
-```
-
-Hanya `array_object` yang dihitung sebagai ancestor. `array_number` dan `array_string` adalah leaf (mis. `last_24_delq_hist = [0, 0, 30, ...]`).
-
-### Date-Field Window Filtering
-
-Untuk query *"worst HariTunggakan 3 bulan terakhir"* di mana data per bulan adalah object:
-
-```json
-{ "op": "max",
-  "params": { "date_field": "Bulan", "ref_date": "2026-04-30", "n": 3, "unit": "month" } }
-```
-
-Engine memfilter elemen array berdasarkan `elemMap["Bulan"]` sebelum mengumpulkan nilai. Elemen yang `Bulan`-nya di luar window `[ref_date - 3 months, ref_date]` dilewati.
-
-Format tanggal partial `"2026-04"` (YYYY-MM) ditangani dengan memperlakukannya sebagai `"2026-04-01"`.
-
-### CrossRecordOp
-
-Hasil per-record dari aggregasi array harus digabungkan secara tepat ketika ada beberapa records dalam satu group:
-
-| Op | CrossRecordOp | Alasan |
-|---|---|---|
-| `sum`, `count`, `count_date_last_n` | `sum` | Partial sum dijumlah |
-| `ever_has_last_n` | `max` | 1 jika ada record yang punya kondisi |
-| `max`, `worst_last_n` | `max` | Max dari per-record maxes |
-| `min` | `min` | Min dari per-record mins |
-| `avg` | `avg` | Mean of means (simple, equal-weight) |
-
-### Schema Detection
-
-`DetectSchema(data[0], "", "")` berjalan rekursif di record pertama dan menghasilkan `[]FieldInfo`:
-
-```go
-type FieldInfo struct {
-    Path      string // "FasilitasList.Fasilitas.Outstanding"
-    Type      string // "number" | "string" | "boolean" | "null" |
-                     // "array_object" | "array_number" | "array_string" |
-                     // "array_primitive" | "array_empty"
-    ArrayPath string // path ancestor array terdekat, atau "" jika di root
-}
-```
-
-Field dengan `ArrayPath != ""` adalah kandidat array-level aggregation.
 
 ---
 
@@ -430,142 +247,58 @@ Field dengan `ArrayPath != ""` adalah kandidat array-level aggregation.
 
 | Method | Endpoint | Keterangan |
 |---|---|---|
-| `GET` | `/api/datasets` | Daftar nama dataset |
-| `GET` | `/api/schema?dataset=<name>` | `[]FieldInfo` dari dataset |
-| `GET` | `/api/data?dataset=<name>` | Raw data (untuk preview) |
-| `POST` | `/api/aggregate` | Eksekusi DSL, return `[]map` |
-| `POST` | `/api/upload` | Upload JSON atau XML. Auto-detect dari Content-Type atau byte pertama |
-| `POST` | `/api/upload/xsd?dataset=<name>` | Upload XSD, simpan hints untuk `<name>` |
+| `GET` | `/api/datasets` | Daftar dataset |
+| `GET` | `/api/schema?dataset=<name>` | FieldInfo dari dataset |
+| `GET` | `/api/data?dataset=<name>` | Raw data untuk preview |
+| `POST` | `/api/aggregate` | Eksekusi DSL |
+| `POST` | `/api/upload` | Upload JSON atau XML (auto-detect) |
+| `POST` | `/api/upload/xsd?dataset=<name>` | Upload XSD hints untuk dataset XML |
 | `GET` | `/api/xsd` | Dataset yang punya XSD hints |
-| `GET` | `/api/xsd/info?dataset=<name>` | Detail `stringPaths` dan `arrayPaths` dari XSD |
-
-**Upload JSON:**
-```bash
-curl -X POST http://localhost:8888/api/upload \
-  -H "Content-Type: application/json" \
-  -d @data.json
-# Response: {"name":"uploaded_1234","count":42,"format":"json"}
-```
-
-**Upload XML:**
-```bash
-curl -X POST http://localhost:8888/api/upload \
-  -H "Content-Type: application/xml" \
-  -d @data.xml
-# Response: {"name":"uploaded_5678","count":1,"format":"xml"}
-```
-
-**Upload XSD (opsional, untuk dataset XML):**
-```bash
-curl -X POST "http://localhost:8888/api/upload/xsd?dataset=uploaded_5678" \
-  -H "Content-Type: application/xml" \
-  -d @schema.xsd
-# Response: {"dataset":"uploaded_5678","arrayPaths":3,"stringPaths":8}
-```
-
----
-
-## Frontend
-
-`static/index.html` adalah single-file application (HTML + CSS + JS, tanpa framework).
-
-### Fitur UI
-
-**Upload area:**
-- Drag-and-drop atau klik untuk upload JSON/XML
-- Format auto-detect dari ekstensi file
-- Upload XSD opsional muncul otomatis setelah dataset XML dipilih
-
-**Dataset list:**
-- Badge format: `JSON` (biru) / `XML` (orange) / `builtin` (hijau)
-- Badge `XSD` (ungu) jika hints sudah dimuat
-- Panel detail XSD hints (array paths + string paths)
-
-**Query builder:**
-- **Local Filter** — filter elemen array sebelum aggregasi
-- **WHERE** — filter parent record
-- **GROUP BY** — multi-field dengan chip UI
-- **Aggregations** — field + operator + alias
-  - Window ops (index): input N
-  - Date window ops: input `date_field`, `ref_date` (date picker), `N`, `unit`
-
-**DSL Preview:** JSON yang akan dikirim ke `/api/aggregate` — realtime update.
-
-**Hasil:** Tabel dengan scroll, nilai numerik rata-kanan, null di-display dengan style italic.
+| `GET` | `/api/xsd/info?dataset=<name>` | Detail string/array paths dari XSD |
 
 ---
 
 ## Test Suite
 
-29 test, 0 failure.
+```bash
+go test ./...                                    # semua test
+go test ./gator -bench=. -benchmem               # benchmark
+go test ./gator -run TestMemory -v               # memory leak
+go test ./gator -run TestLoad -race -v           # concurrency + race detector
+go test ./gator -run "^Fuzz" -v                 # fuzz corpus regression
+go test ./gator -fuzz=FuzzJSONIngest -fuzztime=60s  # fuzz aktif
+```
 
-### `config/config_test.go` — 3 test
-- `TestDefaults` — nilai default
-- `TestLoad` — parse YAML lengkap
-- `TestMissingFile` — file tidak ada → error
-
-### `gator/gator_test.go` — 6 test
-- `TestPefindo` — two-pass: verifikasi tidak ada double-counting pada mixed parent + array field
-- `TestEmployeesMixedAgg` — group by department, salary (parent) + outstanding (array)
-- `TestLocalFilterNoDoubling` — local filter + verifikasi parent field tidak ikut digandakan
-- `TestDewi` — record dengan `credits: []` tetap muncul di hasil, nilai count/ever = 0 bukan nil
-- `TestCountDateLastN` — operator `count_date_last_n`
-- `TestCreditFullDSL` — DSL 6 aggregasi sekaligus dengan `worst_last_n`, `ever_has_last_n`, `count_date_last_n`
-
-### `gator/ingest/xml_test.go` — 14 test unit parser
-- Scalar, empty, boolean coerce, attr+text, attr-only
-- Single-child → scalar, multi-child → array, non-container → scalar
-- Primitive array, root attribute, alert primitive array
-- Integration: `TestTUXML` (tuxml.xml), `TestIDEB` (ideb.xml)
-
-### `gator/ingest/xsd_test.go` — 4 test
-- `TestParseXSD` — parse XSD, verifikasi ArrayPaths dan StringPaths
-- `TestXSDHintsForceArray` — single-child Score + TradeLine dipaksa jadi array oleh XSD
-- `TestXSDHintsStringNoCoerce` — ZipCode `xs:string` tidak di-coerce ke float
-- `TestMergeXSDHints` — merge dua XSDHints
-
-### `gator/ingest/xml_aggregate_test.go` — 2 test end-to-end
-- `TestIDEBAggregation` — parse ideb.xml → Aggregate: parent-level, level-1 array, level-2 nested (dengan date_field filter)
-- `TestTUXMLAggregation` — parse tuxml.xml → Aggregate: sum balance, max DPD, count date last N
+| Kategori | File | Tests |
+|---|---|---|
+| Unit engine | `gator_test.go` | 22 |
+| Optimasi transparan | `cache_test.go` | 6 |
+| Unit ingest XML | `ingest/xml_test.go` | 14 |
+| Unit XSD | `ingest/xsd_test.go` | 5 |
+| End-to-end XML→Aggregate | `ingest/xml_aggregate_test.go` | 2 |
+| Config | `config/config_test.go` | 3 |
+| Benchmark | `bench_test.go` | 14 |
+| Memory leak | `memleak_test.go` | 4 |
+| Fuzz | `fuzz_test.go` | 5 targets |
+| Load/concurrent | `load_test.go` | 4 |
+| **Total** | | **58+ tests** |
 
 ---
 
-## Keputusan Desain yang Didiskusikan
+## Catatan Desain
 
-### Mengapa tidak menggunakan flattening?
+### Mengapa tidak ada JSON Schema?
 
-Flattening adalah pendekatan naif yang sering digunakan: denormalisasi parent-child menjadi baris flat, lalu aggregate semuanya. Masalahnya, ketika query mengandung field dari parent **dan** field dari dalam array di satu waktu, parent field terhitung N kali (N = jumlah child). Ini adalah bug yang tidak terdeteksi secara kasat mata — hasil terlihat wajar tapi nilainya salah dua kali lipat.
+JSON adalah format self-describing. `750` sudah `float64`, `"01"` sudah `string`, `[]` sudah array. Tidak ada ambiguitas tipe seperti di XML. JSON Schema hanya berguna untuk validasi struktur — yang sudah ditangani oleh `validateRequest()` yang menolak field yang resolve ke `array_object`.
 
-Contoh kasus yang memotivasi perbaikan ini: dataset pefindo.json dengan `summary.totalLimit = 100_000_000` dan dua `detailedFacilities`. Dengan naive flattening, `SUM(summary.totalLimit)` menghasilkan `200_000_000`.
+### Mengapa XSD opsional, bukan wajib?
 
-### Mengapa `array_object` saja yang jadi ancestor, bukan `array_number`?
+Engine bekerja dengan heuristik yang mencakup 90%+ kasus XML riil. XSD wajib akan memblokir penggunaan dengan format yang tidak punya XSD (mayoritas API kredit bureau Indonesia). Opsi B (opsional) adalah sweet spot: engine tetap bekerja tanpa XSD, dengan akurasi penuh jika XSD disediakan.
 
-`array_number` seperti `last_24_delq_hist = [0, 30, 45, ...]` adalah leaf — isinya nilai yang langsung di-aggregate. Ia bukan container yang perlu di-iterate untuk masuk ke level berikutnya. Hanya `array_object` (array of maps) yang bisa jadi intermediate ancestor dalam path rekursif.
+### Mengapa `avg` bukan mean-of-means?
 
-### XML: force-array berdasarkan observasi, bukan schema
+Di konteks financial institution, mean-of-means memberikan bobot yang sama ke setiap nasabah tanpa memperhatikan berapa banyak fasilitas yang dimiliki. Nasabah dengan 1 kredit dan nasabah dengan 10 kredit diperlakukan setara. Ini tidak benar secara matematis dan bisa menghasilkan keputusan kredit yang salah.
 
-Keputusan awal untuk "force array jika semua sibling punya tag sama" terbukti terlalu agresif — element seperti `<Score>` yang hanya punya `<Value>` satu-satunya child tidak seharusnya dijadikan array. Keputusan final: **force array jika tag yang sama muncul ≥2 kali dalam satu parent**. Ini observable dari dokumen tanpa schema eksternal.
+### Mengapa explode mode perlu dedup parent fields?
 
-Konsekuensinya: dokumen XML dengan single-item container (`<Scores><Score>...</Score></Scores>`) menghasilkan scalar, bukan array. Ini diselesaikan dengan XSD hints.
-
-### Mengapa XSD bersifat opsional (Opsi B)?
-
-Opsi A (heuristik murni) mencakup 90% kasus tapi gagal di edge case seperti ZipCode yang terlihat numerik. Opsi C (full XSD validation wajib) terlalu invasif dan tidak mungkin untuk semua format XML yang ada di lapangan. Opsi B adalah sweet spot: engine tetap bekerja tanpa XSD, tapi bisa di-improve dengan XSD untuk dua hal spesifik yang heuristik tidak bisa selesaikan.
-
-### Mengapa `date_field` di params bukan di DSL level atas?
-
-Konsistensi dengan operator lain yang punya params (`n`, `value`). User bisa menentukan `date_field` yang berbeda untuk setiap aggregation di satu query — misalnya satu aggregation memakai `date_field: "TanggalMulai"` (open date) dan satu lagi `date_field: "Bulan"` (history date). Kalau `date_field` di level DSL atas, harus dibuat satu per query.
-
-### Mengapa `count_date_last_n` bukan `count_open_last_n`?
-
-Nama `count_open_last_n` spesifik ke konsep "tanggal buka akun". Setelah diskusi, digeneralisasi menjadi `count_date_last_n` — menghitung elemen array yang nilai field tanggalnya (`date_field`) jatuh dalam window. Bisa dipakai untuk `open_date`, `close_date`, `event_date`, `Bulan`, atau field tanggal apapun.
-
----
-
-## Penambahan yang Mungkin di Masa Depan
-
-- **Reparse endpoint** — apply XSD hints ke dataset yang sudah diupload tanpa upload ulang XML
-- **Multi-record XML** — `ParseXMLMany` untuk XML yang berisi banyak record dalam satu root
-- **CSV ingest** — tab pemisah yang sama dengan JSON/XML di `gator/ingest/csv.go`
-- **Persist dataset** — simpan dataset yang diupload ke disk agar tidak hilang setelah restart
-- **Export hasil** — download hasil aggregasi sebagai CSV atau JSON dari UI
+Ketika array di-explode, setiap elemen membawa copy field parent. `AVG(salary)` tanpa dedup akan menghitung salary yang sama N kali (N = jumlah elemen array). Dedup mengumpulkan satu nilai salary per parent record sebelum aggregate — hasilnya benar.

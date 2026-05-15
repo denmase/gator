@@ -3,6 +3,7 @@ package gator
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 // EvaluateWhere returns true if record satisfies all conditions in the where map.
@@ -48,6 +49,20 @@ func evaluateOp(val interface{}, found bool, op string, opVal interface{}) bool 
 			}
 		}
 		return false
+	case "$nin":
+		if !found || val == nil {
+			return true
+		}
+		arr, ok := opVal.([]interface{})
+		if !ok {
+			return true
+		}
+		for _, item := range arr {
+			if compareValues(val, item) == 0 {
+				return false
+			}
+		}
+		return true
 	case "$contains":
 		if !found {
 			return false
@@ -59,6 +74,37 @@ func evaluateOp(val interface{}, found bool, op string, opVal interface{}) bool 
 		return found && val != nil
 	case "$null":
 		return !found || val == nil
+	case "$within_months":
+		// True if val (ISO date string) >= now - N months.
+		if !found || val == nil {
+			return false
+		}
+		s, ok := val.(string)
+		if !ok {
+			return false
+		}
+		months, ok := ToFloat64(opVal)
+		if !ok {
+			return false
+		}
+		threshold := time.Now().AddDate(0, -int(months), 0).Format("2006-01-02")
+		return s >= threshold
+	case "$between":
+		// True if lo <= val <= hi. opVal must be [lo, hi].
+		if !found || val == nil {
+			return false
+		}
+		arr, ok := opVal.([]interface{})
+		if !ok || len(arr) != 2 {
+			return false
+		}
+		v, ok1 := ToFloat64(val)
+		lo, ok2 := ToFloat64(arr[0])
+		hi, ok3 := ToFloat64(arr[1])
+		if !ok1 || !ok2 || !ok3 {
+			return false
+		}
+		return v >= lo && v <= hi
 	default:
 		return true
 	}
@@ -88,6 +134,24 @@ func compareValues(a, b interface{}) int {
 		return 1
 	default:
 		return 0
+	}
+}
+
+// compareWithOp compares two float64 values using a DSL operator.
+// Used by ever_has_last_n, count_last_n with params["comparator"].
+// Defaults to "$eq" for unknown operators.
+func compareWithOp(val, target float64, op string) bool {
+	switch op {
+	case "$gte":
+		return val >= target
+	case "$gt":
+		return val > target
+	case "$lte":
+		return val <= target
+	case "$lt":
+		return val < target
+	default: // "$eq"
+		return floatEq(val, target)
 	}
 }
 
